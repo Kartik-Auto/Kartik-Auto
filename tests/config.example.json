@@ -1,0 +1,7 @@
+{
+  "baseUrl": "https://stage.futureonesports.com/login",
+  "waiverUrl": "https://stage.futureonesports.com/settings/waiver",
+  "locationUrl": "https://stage.futureonesports.com/settings/location",
+  "username": "your-user@mailinator.com",
+  "password": "your-password"
+}

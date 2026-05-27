@@ -1,0 +1,18 @@
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Local config (credentials)
+tests/config.json
+
+# IDE / tooling
+.idea/
+.playwright-mcp/
+
+# Misc
+Untitled
