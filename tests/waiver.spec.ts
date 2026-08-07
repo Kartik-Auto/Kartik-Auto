@@ -35,7 +35,8 @@ test.describe('Waiver creation', () => {
     await waiverPage.waitForListPage();
   });
 
-  test('Waiver settings page should load', async () => {
+  // Verify the waiver settings page loads and the search input works
+  test('WV-01 | Waiver settings page should load', async () => {
     const searchTerm = faker.lorem.words(2);
 
     await expect(waiverPage.heading).toBeVisible();
@@ -46,14 +47,16 @@ test.describe('Waiver creation', () => {
     await expect(waiverPage.searchInput).toHaveValue(searchTerm);
   });
 
-  test('Publish waiver should create an In Effect waiver in the list', async () => {
+  // Create and publish a waiver, then confirm it appears as In Effect in the list
+  test('WV-02 | Publish waiver should create an In Effect waiver in the list', async () => {
     const waiverData = WaiverPage.buildPublishedWaiverData();
 
     await waiverPage.createAndPublish(waiverData);
     await waiverPage.expectWaiverInList(waiverData, 'In Effect');
   });
 
-  test('Save as draft should create a Draft waiver in the list', async () => {
+  // Save a waiver as draft and confirm it appears with Draft status in the list
+  test('WV-03 | Save as draft should create a Draft waiver in the list', async () => {
     const waiverData = WaiverPage.buildDraftWaiverData({
       name: WaiverPage.buildWaiverName(),
       description: faker.lorem.paragraph({ min: 2, max: 4 }),
@@ -63,7 +66,8 @@ test.describe('Waiver creation', () => {
     await waiverPage.expectWaiverInList(waiverData, 'Draft');
   });
 
-  test('Created waiver should be shown in the waivers list', async () => {
+  // Create a published waiver and confirm it is visible in the waivers list
+  test('WV-04 | Created waiver should be shown in the waivers list', async () => {
     const waiverData = WaiverPage.buildPublishedWaiverData({
       name: WaiverPage.buildWaiverName(),
       description: faker.lorem.sentences({ min: 2, max: 4 }),
@@ -73,7 +77,8 @@ test.describe('Waiver creation', () => {
     await waiverPage.expectWaiverInList(waiverData, 'In Effect');
   });
 
-  test('Cancel should return to waivers list without saving', async () => {
+  // Fill the create form then cancel and confirm the waiver is not saved
+  test('WV-05 | Cancel should return to waivers list without saving', async () => {
     const waiverData = WaiverPage.buildPublishedWaiverData({
       name: `${faker.word.adjective()} ${faker.word.noun()} Waiver ${faker.string.numeric(4)}`,
       description: faker.lorem.sentence(),

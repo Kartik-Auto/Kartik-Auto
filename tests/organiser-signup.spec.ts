@@ -155,13 +155,13 @@ test.describe('Sign Up Flow — FutureOne Sports', () => {
     const orgStep1Page = new OrgDetailsStep1Page(page);
     const orgStep2Page = new OrgDetailsStep2Page(page);
 
-    const personalData = PersonalDetailsPage.buildPersonalDetailsData();
+    const personalData = PersonalDetailsPage.buildPersonalDetailsDataWithPhone();
     const step1Data = OrgDetailsStep1Page.buildOrgStep1Data();
     const step2Data = OrgDetailsStep2Page.buildOrgStep2Data();
 
-    const signupData = await signupPage.completeSignupToOrganizerRole();
+    await signupPage.completeSignupToOrganizerRole();
 
-    console.log('TC-07: Completing personal details');
+    console.log('TC-07: Completing personal details (mobile + OTP required)');
     await personalDetailsPage.ensureOnPersonalDetailsPage();
     await personalDetailsPage.submitPersonalDetails(personalData);
 
@@ -186,11 +186,11 @@ test.describe('Sign Up Flow — FutureOne Sports', () => {
     console.log('TC-09: Building org step 2 data');
     const step2 = OrgDetailsStep2Page.buildOrgStep2Data();
 
-    console.log('TC-09: Validating personal details omit optional phone by default');
+    console.log('TC-09: Validating personal details builders');
     expect(personal.mobileNumber).toBeUndefined();
     const personalWithPhone = PersonalDetailsPage.buildPersonalDetailsDataWithPhone();
     expect(personalWithPhone.mobileNumber).toMatch(/^\d{10}$/);
-    console.log('TC-09: Validating org step 1 EIN format');
+    console.log('TC-09: Validating phone builder (required for onboarding OTP)');
     expect(step1.ein).toMatch(/^\d{9}$/);
     console.log('TC-09: Validating org step 2 omits optional sport by default');
     expect(step2.sport).toBeUndefined();
@@ -264,17 +264,18 @@ test.describe('Sign Up Flow — FutureOne Sports', () => {
     test('TC-10 | Personal details form should accept data and advance', async () => {
       console.log('TC-10: Initializing personal details page');
 
-      console.log('TC-10: Building personal details data');
-      const personalData = PersonalDetailsPage.buildPersonalDetailsData();
+      console.log('TC-10: Building personal details data with phone (OTP required)');
+      const personalData = PersonalDetailsPage.buildPersonalDetailsDataWithPhone();
       console.log(`TC-10: address=${personalData.address}, state=${personalData.state}`);
       console.log(`TC-10: city=${personalData.city}, zipCode=${personalData.zipCode}`);
+      console.log(`TC-10: mobileNumber=${personalData.mobileNumber}`);
 
       console.log('TC-10: Ensuring on personal details page');
       await personalDetailsPage.waitForPage();
       await personalDetailsPage.ensureOnPersonalDetailsPage();
-      console.log('TC-10: Verifying mobile input is empty');
+      console.log('TC-10: Verifying mobile input starts empty');
       await expect(personalDetailsPage.mobileInput).toBeEmpty();
-      console.log('TC-10: Submitting personal details');
+      console.log('TC-10: Submitting personal details (mobile verify + OTP + address)');
       await personalDetailsPage.submitPersonalDetails(personalData);
 
       console.log('TC-10: Waiting for organization step 1');

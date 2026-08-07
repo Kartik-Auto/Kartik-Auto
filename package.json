@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "test:visual": "playwright test --project=visual --workers=1",
+    "test:report": "playwright show-report",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -17,6 +24,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-playwright": "^2.4.0",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "prettier": "^3.7.4",
     "typescript-eslint": "^8.50.0"
   }

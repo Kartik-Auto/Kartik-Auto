@@ -3,7 +3,9 @@ import { StaffDetailsPage } from './pages/StaffDetailsPage';
 import { LoginPage } from './pages/LoginPage';
 import config from './config.json';
 
-test('Add staff to the organisation with valid details', async ({ page }) => {
+test.describe.configure({ mode: 'serial' });
+
+test('AS-01 | Add staff to the organisation with valid details', async ({ page }) => {
   // Login first
   const loginPage = new LoginPage(page);
   await loginPage.goto(config.baseUrl);
@@ -75,7 +77,7 @@ test('Add staff to the organisation with valid details', async ({ page }) => {
   console.log('Test completed successfully');
 });
 
-test('Add staff member with Admin role', async ({ page }) => {
+test('AS-02 | Add staff member with Admin role', async ({ page }) => {
   const loginPage = new LoginPage(page);
   await loginPage.goto(config.baseUrl);
   await loginPage.login(config.username, config.password);
@@ -97,7 +99,7 @@ test('Add staff member with Admin role', async ({ page }) => {
   await staffDetailsPage.expectStaffInList(staffData);
 });
 
-test('Added staff member should be shown in the staff list', async ({ page }) => {
+test('AS-03 | Added staff member should be shown in the staff list', async ({ page }) => {
   const loginPage = new LoginPage(page);
   await loginPage.goto(config.baseUrl);
   await loginPage.login(config.username, config.password);

@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 import { pace } from '../helpers/pacing';
 
@@ -15,6 +15,9 @@ export class PersonalDetailsPage {
 
   readonly emailVerifiedToast: Locator;
   readonly mobileInput:        Locator;
+  readonly verifyMobileButton: Locator;
+  readonly otpInputs:          Locator;
+  readonly verifiedStatus:     Locator;
   readonly proceedWithoutOtp:  Locator;
   readonly addressInput:       Locator;
   readonly stateInput:         Locator;
@@ -27,6 +30,12 @@ export class PersonalDetailsPage {
     this.page = page;
     this.emailVerifiedToast = page.getByText('Your email has been verified');
     this.mobileInput        = page.getByRole('textbox', { name: 'Mobile number' });
+    this.verifyMobileButton = page.getByRole('button', { name: /^Verify$/i }).first();
+    // Staging OTP UI uses one digit per box under "Verification code"
+    this.otpInputs          = page
+      .locator('input[maxlength="1"]')
+      .or(page.getByLabel(/Verification code/i).locator('input'));
+    this.verifiedStatus     = page.getByText(/^Verified$/i);
     this.proceedWithoutOtp  = page
       .getByRole('button', { name: 'Proceed without OTP' })
       .or(page.getByRole('link', { name: 'Proceed without OTP' }))
@@ -52,7 +61,28 @@ export class PersonalDetailsPage {
     ) {
       return;
     }
-    await this.skipOptionalPhoneVerification();
+
+    // Legacy optional phone step — skip only when the app still offers it.
+    if (await this.proceedWithoutOtp.isVisible().catch(() => false)) {
+      await this.skipOptionalPhoneVerification();
+      await this.waitForPage();
+      return;
+    }
+
+    const phoneStepNav = this.page.getByRole('button', {
+      name: 'Navigate to Phone verification',
+    });
+    if (await phoneStepNav.isVisible().catch(() => false)) {
+      await phoneStepNav.click();
+    }
+
+    const basicDetailsNav = this.page.getByRole('button', {
+      name: 'Navigate to Basic Details',
+    });
+    if (await basicDetailsNav.isVisible().catch(() => false)) {
+      await basicDetailsNav.click();
+    }
+
     await this.waitForPage();
   }
 
@@ -79,6 +109,54 @@ export class PersonalDetailsPage {
     }
   }
 
+  /**
+   * Request OTP → enter digit in each box → Verify → assert Verified status.
+   * Staging accepts `1` in every OTP box (same flow as parent signup).
+   */
+  async completeMobileVerification(mobileNumber?: string, otpDigit = '1') {
+    const phone = mobileNumber ?? faker.string.numeric(10);
+
+    const phoneStepNav = this.page.getByRole('button', {
+      name: 'Navigate to Phone verification',
+    });
+    if (await phoneStepNav.isVisible().catch(() => false)) {
+      await phoneStepNav.click();
+    }
+
+    await this.fillMobileIfProvided(phone);
+
+    await this.verifyMobileButton.click();
+    await this.otpInputs.first().waitFor({ state: 'visible' });
+
+    const boxCount = await this.otpInputs.count();
+    for (let i = 0; i < boxCount; i++) {
+      await this.otpInputs.nth(i).fill(otpDigit);
+    }
+
+    await this.page.getByRole('button', { name: /^Verify$/i }).click();
+    await expect(this.verifiedStatus).toBeVisible();
+  }
+
+  async ensureOnPersonalDetailsPageForParent() {
+    if (
+      await this.page
+        .getByRole('heading', { name: 'Personal Details' })
+        .isVisible()
+        .catch(() => false)
+    ) {
+      return;
+    }
+
+    const phoneStepNav = this.page.getByRole('button', {
+      name: 'Navigate to Phone verification',
+    });
+    if (await phoneStepNav.isVisible().catch(() => false)) {
+      await phoneStepNav.click();
+    }
+
+    await this.waitForPage();
+  }
+
   private async fillMobileIfProvided(mobileNumber: string) {
     if (!(await this.mobileInput.isEditable().catch(() => false))) return;
     await this.mobileInput.fill(mobileNumber);
@@ -94,10 +172,6 @@ export class PersonalDetailsPage {
   async fillPersonalDetails(data: PersonalDetailsData) {
     await this.ensureOnPersonalDetailsPage();
 
-    if (data.mobileNumber) {
-      await this.fillMobileIfProvided(data.mobileNumber);
-    }
-
     await this.fillWithRandomTestId(this.addressInput, data.address, 'address');
     await this.fillWithRandomTestId(this.stateInput, data.state, 'state');
     await this.fillWithRandomTestId(this.cityInput, data.city, 'city');
@@ -112,8 +186,19 @@ export class PersonalDetailsPage {
     await pace(this.page);
   }
 
+  /**
+   * Mobile + OTP (required) → address fields → Next into org Step-1.
+   * Matches parent signup OTP handling on staging.
+   */
   async submitPersonalDetails(data: PersonalDetailsData) {
-    await this.fillPersonalDetails(data);
+    const personalData = {
+      ...data,
+      mobileNumber: data.mobileNumber ?? faker.string.numeric(10),
+    };
+
+    await this.ensureOnPersonalDetailsPage();
+    await this.completeMobileVerification(personalData.mobileNumber);
+    await this.fillPersonalDetails(personalData);
     await this.clickNext();
   }
 

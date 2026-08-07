@@ -35,8 +35,9 @@ test.describe('Add Locations', () => {
     await locationPage.waitForListPage();
   });
 
-  test('Locations settings page should load', async () => {
-    console.log('[location.spec] TC: Locations settings page should load');
+  // Verify the locations settings page loads with heading and add button visible
+  test('LC-01 | Locations settings page should load', async () => {
+    console.log('[location.spec] LC-01: Locations settings page should load');
 
     await expect(locationPage.heading).toBeVisible();
     console.log('[location.spec] Verified Locations heading');
@@ -44,8 +45,9 @@ test.describe('Add Locations', () => {
     console.log('[location.spec] Verified Add New Location button');
   });
 
-  test('Add location should appear in the locations list', async () => {
-    console.log('[location.spec] TC: Add location should appear in the locations list');
+  // Add a single-field location and confirm it appears in the list
+  test('LC-02 | Add location should appear in the locations list', async () => {
+    console.log('[location.spec] LC-02: Add location should appear in the locations list');
     const locationData = LocationPage.buildLocationData({
       name: LocationPage.buildLocationName(),
       address: faker.location.streetAddress(),
@@ -66,8 +68,9 @@ test.describe('Add Locations', () => {
     console.log('[location.spec] Location found in list');
   });
 
-  test('Add location with multiple fields should show correct field count', async () => {
-    console.log('[location.spec] TC: Add location with multiple fields');
+  // Add a location with multiple fields and confirm the correct field count is shown
+  test('LC-03 | Add location with multiple fields should show correct field count', async () => {
+    console.log('[location.spec] LC-03: Add location with multiple fields');
     const locationData = LocationPage.buildLocationWithMultipleFields(2);
     console.log(`[location.spec] Built location with ${locationData.fields.length} fields`);
 
@@ -78,8 +81,9 @@ test.describe('Add Locations', () => {
     console.log('[location.spec] Multi-field location verified in list');
   });
 
-  test('Cancel should close dialog without adding location', async () => {
-    console.log('[location.spec] TC: Cancel should not save location');
+  // Open the add dialog, fill the form, cancel, and confirm the location is not saved
+  test('LC-04 | Cancel should close dialog without adding location', async () => {
+    console.log('[location.spec] LC-04: Cancel should not save location');
     const locationData = LocationPage.buildLocationData({
       name: `${faker.word.adjective()} ${faker.location.city()} ${faker.string.numeric(3)}`,
       address: faker.location.streetAddress(),

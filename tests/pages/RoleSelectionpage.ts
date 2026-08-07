@@ -54,10 +54,18 @@ export class RoleSelectionPage {
     await this.page.getByRole('button', { name: 'Continue' }).click();
   }
 
-  /** Signup flow always uses Organizer — verifies no other role is selected. */
+  /** Signup flow — Organizer only; verifies no other role is selected. */
   async chooseOrganizerOnly() {
     await this.selectOrganizer();
     await expect(this.roleRadio('PARENT')).not.toBeChecked();
+    await expect(this.roleRadio('STAFF')).not.toBeChecked();
+    await this.clickContinue();
+  }
+
+  /** Signup flow — Parent / Player only; verifies no other role is selected. */
+  async chooseParentOnly() {
+    await this.selectParentOrPlayer();
+    await expect(this.roleRadio('ORGANIZATION_ADMIN')).not.toBeChecked();
     await expect(this.roleRadio('STAFF')).not.toBeChecked();
     await this.clickContinue();
   }

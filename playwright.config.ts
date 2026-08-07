@@ -19,7 +19,13 @@ export default defineConfig({
   timeout: 180_000,
   expect: {
     timeout: 20_000,
+    toHaveScreenshot: {
+      maxDiffPixels: 150,
+      threshold: 0.25,
+      animations: 'disabled',
+    },
   },
+  snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -35,10 +41,13 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('')`. */
     // baseURL: 'http://localhost:3000',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Trace, screenshot, and video on failure — open via `npx playwright show-report` */
+    trace: 'on',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
     actionTimeout: 45_000,
     navigationTimeout: 60_000,
+    viewport: { width: 1280, height: 720 },
     launchOptions: {
       slowMo,
     },
@@ -48,7 +57,19 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: '**/*.visual.spec.ts',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'visual',
+      testMatch: '**/*.visual.spec.ts',
+      fullyParallel: false,
+      retries: process.env.CI ? 1 : 0,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        launchOptions: { slowMo: 0 },
+      },
     },
 
     /* Test against mobile viewports. */

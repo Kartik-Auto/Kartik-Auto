@@ -1,11 +1,18 @@
 import { Page, Locator, expect } from '@playwright/test';
+import { delay } from '../helpers/pacing';
 
 const MAILINATOR_DOMAIN = 'mailinator.com';
-const MAILINATOR_INBOX_BASE = 'https://www.mailinator.com/v4/public/inboxes.jsp';
+const MAILINATOR_API_BASE = 'https://mailinator.com/api/v2/domains/public';
 const EMAIL_ARRIVAL_WAIT_MS = 12_000;
 const INBOX_POLL_INTERVAL_MS = 3_000;
+const MAILINATOR_POLL_TIMEOUT_MS = 60_000;
+
+type InboxMessagesResponse = {
+  msgs?: Array<{ id: string }>;
+};
 
 type MailinatorMessagePayload = {
+  parts?: Array<{ body?: string }>;
   data?: {
     parts?: Array<{ body?: string }>;
   };
@@ -30,19 +37,16 @@ export class EmailVerificationPage {
   }
 
   async waitForVerificationScreen() {
-    await this.verificationHeading.waitFor({ state: 'visible' });
+    await expect(this.verificationHeading).toBeVisible();
+    await expect(this.resendButton).toBeVisible();
   }
 
   async expectEmailVisible(email: string) {
-    await this.page.getByText(email, { exact: false }).waitFor({ state: 'visible' });
+    await expect(this.page.getByText(email, { exact: true })).toBeVisible();
   }
 
   async clickResend() {
     await this.resendButton.click();
-  }
-
-  private mailinatorInboxUrl(inbox: string) {
-    return `${MAILINATOR_INBOX_BASE}?to=${encodeURIComponent(inbox)}`;
   }
 
   private inboxFromEmail(email: string) {
@@ -64,7 +68,8 @@ export class EmailVerificationPage {
   }
 
   private extractLinkFromMailinatorPayload(payload: MailinatorMessagePayload): string {
-    for (const part of payload.data?.parts ?? []) {
+    const parts = payload.parts ?? payload.data?.parts ?? [];
+    for (const part of parts) {
       const link = this.extractLinkFromText(part.body ?? '');
       if (link) return this.normalizeVerificationHref(link);
     }
@@ -87,34 +92,37 @@ export class EmailVerificationPage {
     }
   }
 
-  private async readLatestMessageId(mailinatorPage: Page): Promise<string> {
-    return mailinatorPage.evaluate(() => {
-      const inboxEl = document.getElementById('InboxCtrl');
-      const angularApi = (
-        window as unknown as {
-          angular?: {
-            element: (el: Element) => { scope: () => { emails: Array<{ id: string }> } };
-          };
-        }
-      ).angular;
-      if (!inboxEl || !angularApi) return '';
-      const emails = angularApi.element(inboxEl).scope().emails;
-      return emails[0]?.id ?? '';
-    });
+  private async fetchLatestMessageId(inbox: string): Promise<string> {
+    const response = await this.page.request.get(
+      `${MAILINATOR_API_BASE}/inboxes/${encodeURIComponent(inbox)}`,
+    );
+    if (!response.ok()) return '';
+
+    const body = (await response.json()) as InboxMessagesResponse;
+    return body.msgs?.[0]?.id ?? '';
   }
 
-  /** Wait for delivery, then poll inbox via Mailinator websocket (no page reloads). */
-  private async pollMailinatorMessageId(mailinatorPage: Page): Promise<string> {
-    await mailinatorPage.waitForTimeout(EMAIL_ARRIVAL_WAIT_MS);
+  private async fetchMessagePayload(messageId: string): Promise<MailinatorMessagePayload> {
+    const response = await this.page.request.get(
+      `${MAILINATOR_API_BASE}/messages/${encodeURIComponent(messageId)}`,
+    );
+    if (!response.ok()) return {};
+
+    return (await response.json()) as MailinatorMessagePayload;
+  }
+
+  /** Wait for delivery, then poll the public Mailinator API (no browser inbox tab). */
+  private async pollMailinatorMessageId(inbox: string): Promise<string> {
+    await delay(EMAIL_ARRIVAL_WAIT_MS);
 
     let messageId = '';
     await expect
       .poll(
         async () => {
-          messageId = await this.readLatestMessageId(mailinatorPage);
+          messageId = await this.fetchLatestMessageId(inbox);
           return messageId;
         },
-        { timeout: 0, intervals: [INBOX_POLL_INTERVAL_MS] },
+        { timeout: MAILINATOR_POLL_TIMEOUT_MS, intervals: [INBOX_POLL_INTERVAL_MS] },
       )
       .not.toBe('');
 
@@ -123,20 +131,23 @@ export class EmailVerificationPage {
 
   async getVerificationLinkFromMailinator(email: string): Promise<string> {
     const inbox = this.inboxFromEmail(email);
-    const mailinatorPage = await this.page.context().newPage();
 
     try {
-      await mailinatorPage.goto(this.mailinatorInboxUrl(inbox), { waitUntil: 'domcontentloaded' });
+      const messageId = await this.pollMailinatorMessageId(inbox);
+      const payload = await this.fetchMessagePayload(messageId);
+      const link = this.extractLinkFromMailinatorPayload(payload);
+      if (link) return link;
 
-      const messageId = await this.pollMailinatorMessageId(mailinatorPage);
-      const response = await mailinatorPage.request.get(
+      const legacyResponse = await this.page.request.get(
         `https://www.mailinator.com/fetch_public?msgid=${encodeURIComponent(messageId)}`,
       );
-      const payload = (await response.json()) as MailinatorMessagePayload;
+      if (!legacyResponse.ok()) return '';
 
-      return this.extractLinkFromMailinatorPayload(payload);
-    } finally {
-      await mailinatorPage.close();
+      return this.extractLinkFromMailinatorPayload(
+        (await legacyResponse.json()) as MailinatorMessagePayload,
+      );
+    } catch {
+      return '';
     }
   }
 
