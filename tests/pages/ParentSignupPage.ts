@@ -4,6 +4,7 @@ import { EmailVerificationPage } from './EmailVerificationPage';
 import { RoleSelectionPage } from './RoleSelectionpage';
 import { PersonalDetailsPage, PersonalDetailsData } from './PersonalDetailsPage';
 import { pace } from '../helpers/pacing';
+import { getEnvConfig } from '../helpers/env';
 
 export const PARENT_SIGNUP_PASSWORD = 'Test@123';
 export const PARENT_SIGNUP_EMAIL_DOMAIN = 'mailinator.com';
@@ -25,7 +26,7 @@ export class ParentSignupPage {
   }
 
   async gotoSignup() {
-    await this.page.goto('https://stage.futureonesports.com/signup', {
+    await this.page.goto(getEnvConfig().signupUrl, {
       waitUntil: 'domcontentloaded',
     });
     await this.page.locator('input[name="firstName"]').waitFor({ state: 'visible' });
@@ -97,7 +98,7 @@ export class ParentSignupPage {
 
     console.log('[ParentSignup] Filling personal details');
     await personalDetailsPage.ensureOnPersonalDetailsPageForParent();
-    await personalDetailsPage.completeMobileVerification(personalData.mobileNumber);
+    await personalDetailsPage.ensureMobileHandled(personalData.mobileNumber);
     await personalDetailsPage.fillPersonalDetails(personalData);
 
     console.log('[ParentSignup] Clicking Sign up');

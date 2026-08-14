@@ -1,0 +1,15 @@
+{
+  "name": "uat",
+  "origin": "https://uat.futureonesports.com",
+  "baseUrl": "https://uat.futureonesports.com/login",
+  "signupUrl": "https://uat.futureonesports.com/signup",
+  "waiverUrl": "https://uat.futureonesports.com/settings/waiver",
+  "locationUrl": "https://uat.futureonesports.com/settings/location",
+  "username": "REPLACE_WITH_UAT_ORG_EMAIL",
+  "password": "REPLACE_WITH_UAT_ORG_PASSWORD",
+  "parentUsername": "REPLACE_WITH_UAT_PARENT_EMAIL",
+  "parentPassword": "REPLACE_WITH_UAT_PARENT_PASSWORD",
+  "requireMobileOtp": false,
+  "organiserPersonalDetailsStep": false,
+  "programFeePolicyDialog": false
+}

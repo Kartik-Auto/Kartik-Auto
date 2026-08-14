@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test --project=chromium",
+    "test:stage": "TEST_ENV=stage playwright test --project=chromium",
+    "test:uat": "TEST_ENV=uat playwright test --project=chromium",
     "test:visual": "playwright test --project=visual --workers=1",
+    "test:visual:stage": "TEST_ENV=stage playwright test --project=visual --workers=1",
+    "test:visual:uat": "TEST_ENV=uat playwright test --project=visual --workers=1",
     "test:report": "playwright show-report",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

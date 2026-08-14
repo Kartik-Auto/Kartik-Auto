@@ -6,7 +6,7 @@ import { AddChildProfilePage } from './pages/AddChildProfilePage';
 import { LoginPage } from './pages/LoginPage';
 import { MembershipPaymentPage } from './pages/MembershipPaymentPage';
 import { ParentDashboardPage } from './pages/ParentDashboardPage';
-import config from './config.json';
+import { config } from './helpers/env';
 
 test.describe.configure({ mode: 'serial' });
 

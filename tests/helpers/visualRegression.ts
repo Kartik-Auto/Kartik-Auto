@@ -49,13 +49,16 @@ export function parentDashboardMasks(page: Page): Locator[] {
   ];
 }
 
-/** Masks prefilled contact details on the add-child drawer form. */
+/** Masks prefilled contact details on the add-child form (drawer on Stage, page on UAT). */
 export function addChildFormMasks(page: Page): Locator[] {
-  const drawer = page.locator('[data-slot="drawer-content"]');
+  const form = page
+    .locator('[data-slot="drawer-content"], main')
+    .filter({ has: page.getByRole('heading', { name: 'Child Details', exact: true }) })
+    .last();
 
   return [
-    drawer.getByText(/@[a-z0-9.-]+\.(com|net|org)/i),
-    drawer.getByText(/\(\d{3}\)\s*\d{3}-\d{4}/),
+    form.getByText(/@[a-z0-9.-]+\.(com|net|org)/i),
+    form.getByText(/\(\d{3}\)\s*\d{3}-\d{4}/),
   ];
 }
 

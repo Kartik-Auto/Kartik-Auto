@@ -10,7 +10,7 @@ import {
   prepareForScreenshot,
   waitForToastsToClear,
 } from '../helpers/visualRegression';
-import config from '../config.json';
+import { config } from '../helpers/env';
 
 test.describe('Visual — Parent dashboard', { tag: '@visual' }, () => {
   test('Parent dashboard layout', async ({ page }) => {

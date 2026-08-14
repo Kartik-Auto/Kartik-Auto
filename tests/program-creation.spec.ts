@@ -4,7 +4,7 @@
 import { expect, test } from '@playwright/test';
 import { LoginPage } from './pages/LoginPage';
 import { ProgramPage } from './pages/ProgramPage';
-import config from './config.json';
+import { config } from './helpers/env';
 
 test.describe('Program Creation — FutureOne Sports', () => {
   test('PC-01 | Program creation happy path', async ({ page }) => {

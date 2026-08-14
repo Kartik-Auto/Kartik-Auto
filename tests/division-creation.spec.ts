@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 import { DivisionPage } from './pages/DivisionPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProgramPage } from './pages/ProgramPage';
-import config from './config.json';
+import { config } from './helpers/env';
 
 test.describe('Division Creation — FutureOne Sports', () => {
   test('DC-01 | Division creation happy path', async ({ page }) => {

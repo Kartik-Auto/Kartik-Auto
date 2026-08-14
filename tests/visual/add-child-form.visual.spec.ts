@@ -11,7 +11,7 @@ import {
   prepareForScreenshot,
   waitForToastsToClear,
 } from '../helpers/visualRegression';
-import config from '../config.json';
+import { config } from '../helpers/env';
 
 test.describe('Visual — Add child form', { tag: '@visual' }, () => {
   test('Add child profile form', async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Visual — Add child form', { tag: '@visual' }, () => {
     await prepareForScreenshot(page);
 
     await expectScreenshot(
-      addChildPage.formDrawer(),
+      addChildPage.formContainer(),
       'add-child-profile-form',
       addChildFormMasks(page),
     );

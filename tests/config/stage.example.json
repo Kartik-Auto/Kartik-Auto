@@ -1,0 +1,15 @@
+{
+  "name": "stage",
+  "origin": "https://stage.futureonesports.com",
+  "baseUrl": "https://stage.futureonesports.com/login",
+  "signupUrl": "https://stage.futureonesports.com/signup",
+  "waiverUrl": "https://stage.futureonesports.com/settings/waiver",
+  "locationUrl": "https://stage.futureonesports.com/settings/location",
+  "username": "REPLACE_WITH_STAGE_ORG_EMAIL",
+  "password": "REPLACE_WITH_STAGE_ORG_PASSWORD",
+  "parentUsername": "REPLACE_WITH_STAGE_PARENT_EMAIL",
+  "parentPassword": "REPLACE_WITH_STAGE_PARENT_PASSWORD",
+  "requireMobileOtp": true,
+  "organiserPersonalDetailsStep": true,
+  "programFeePolicyDialog": true
+}

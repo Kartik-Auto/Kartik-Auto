@@ -5,7 +5,7 @@ import { expect, test, type BrowserContext } from '@playwright/test';
 import { LoginPage } from './pages/LoginPage';
 import { ProgramPage } from './pages/ProgramPage';
 import { TeamPage } from './pages/TeamPage';
-import config from './config.json';
+import { config } from './helpers/env';
 
 test.describe.configure({ mode: 'serial' });
 

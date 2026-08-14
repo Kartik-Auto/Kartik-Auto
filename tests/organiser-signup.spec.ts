@@ -5,6 +5,7 @@ import { RoleSelectionPage } from './pages/RoleSelectionpage';
 import { PersonalDetailsPage } from './pages/PersonalDetailsPage';
 import { OrgDetailsStep1Page } from './pages/OrgDetailsStep1Page';
 import { OrgDetailsStep2Page } from './pages/OrgDetailsStep2Page';
+import { config } from './helpers/env';
 
 const ONBOARDING_TIMEOUT = 180_000;
 
@@ -161,9 +162,13 @@ test.describe('Sign Up Flow — FutureOne Sports', () => {
 
     await signupPage.completeSignupToOrganizerRole();
 
-    console.log('TC-07: Completing personal details (mobile + OTP required)');
-    await personalDetailsPage.ensureOnPersonalDetailsPage();
-    await personalDetailsPage.submitPersonalDetails(personalData);
+    if (config.organiserPersonalDetailsStep) {
+      console.log('TC-07: Completing personal details (mobile + OTP required)');
+      await personalDetailsPage.ensureOnPersonalDetailsPage();
+      await personalDetailsPage.submitPersonalDetails(personalData);
+    } else {
+      console.log(`TC-07: Skipping personal details — no such step in ${config.name}`);
+    }
 
     console.log('TC-07: Completing organization step 1');
     await orgStep1Page.waitForPage();
@@ -262,6 +267,11 @@ test.describe('Sign Up Flow — FutureOne Sports', () => {
     });
 
     test('TC-10 | Personal details form should accept data and advance', async () => {
+      test.skip(
+        !config.organiserPersonalDetailsStep,
+        `Organiser onboarding in ${config.name} has no Personal Details step`,
+      );
+
       console.log('TC-10: Initializing personal details page');
 
       console.log('TC-10: Building personal details data with phone (OTP required)');

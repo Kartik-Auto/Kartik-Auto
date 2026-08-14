@@ -1,5 +1,6 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { delay } from '../helpers/pacing';
+import { getEnvConfig } from '../helpers/env';
 
 const MAILINATOR_DOMAIN = 'mailinator.com';
 const MAILINATOR_API_BASE = 'https://mailinator.com/api/v2/domains/public';
@@ -53,16 +54,22 @@ export class EmailVerificationPage {
     return email.split('@')[0];
   }
 
+  private appOrigin(): string {
+    return getEnvConfig().origin;
+  }
+
   private normalizeVerificationHref(href: string): string {
     if (href.startsWith('http')) return href;
     if (href.startsWith('//')) return `https:${href}`;
-    return `https://stage.futureonesports.com${href.startsWith('/') ? '' : '/'}${href}`;
+    const origin = this.appOrigin();
+    return `${origin}${href.startsWith('/') ? '' : '/'}${href}`;
   }
 
   private extractLinkFromText(body: string): string {
+    const host = new URL(this.appOrigin()).host.replace(/\./g, '\\.');
     const match =
       body.match(/https?:\/\/[^\s"'<>\\]+(?:onboarding|verify)[^\s"'<>\\]*/i) ??
-      body.match(/https?:\/\/stage\.futureonesports\.com[^\s"'<>\\]*/i);
+      body.match(new RegExp(`https?:\\/\\/${host}[^\\s"'<>\\\\]*`, 'i'));
     if (!match) return '';
     return match[0].replace(/\\u002F/g, '/').replace(/\\/g, '');
   }

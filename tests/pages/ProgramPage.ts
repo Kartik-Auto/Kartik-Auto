@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { faker } from '@faker-js/faker';
+import { getEnvConfig } from '../helpers/env';
 import { randomAlpha } from '../helpers/testData';
 
 export type ProgramData = {
@@ -198,24 +199,48 @@ export class ProgramPage {
 
   async openCreateProgramForm(): Promise<void> {
     await this.createProgramButton.click();
-    await this.confirmTransactionFeePolicy();
+
+    if (getEnvConfig().programFeePolicyDialog) {
+      // Stage: confirm the fee-policy dialog when it appears. Some Stage deploys
+      // skip it and land on the create form directly — do not fail in that case.
+      await this.confirmTransactionFeePolicyIfShown();
+    }
+
     await expect(this.page).toHaveURL(/\/programs\/create/);
     await expect(this.createProgramHeading).toBeVisible();
   }
 
-  /** Confirm transaction fee policy popup that appears after Create New Program. */
-  async confirmTransactionFeePolicy(): Promise<void> {
+  /**
+   * Confirm transaction fee policy popup when it is shown after Create New Program.
+   * No-ops if the app navigates straight to the create form.
+   */
+  async confirmTransactionFeePolicyIfShown(): Promise<void> {
     const dialog = this.page.getByRole('dialog', { name: /Confirm Transaction Fee Policy/i });
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Continue to Program', exact: true }).click();
-    await expect(dialog).toBeHidden();
+
+    const outcome = await Promise.race([
+      dialog.waitFor({ state: 'visible' }).then(() => 'dialog' as const),
+      this.createProgramHeading.waitFor({ state: 'visible' }).then(() => 'form' as const),
+    ]);
+
+    if (outcome === 'dialog' || (await dialog.isVisible().catch(() => false))) {
+      await dialog.getByRole('button', { name: 'Continue to Program', exact: true }).click();
+      await expect(dialog).toBeHidden();
+    }
+  }
+
+  /** @deprecated Prefer confirmTransactionFeePolicyIfShown — kept for Stage hard-path callers. */
+  async confirmTransactionFeePolicy(): Promise<void> {
+    await this.confirmTransactionFeePolicyIfShown();
   }
 
   async fillProgramForm(data: ProgramData): Promise<void> {
     await this.disablePageAnimations();
     await this.programNameInput.fill(data.name);
     await this.descriptionInput.fill(data.description);
-    await this.registrationFeeInput.fill(data.registrationFee);
+    // Stage allows editing registration fee; UAT currently locks it (prefilled 0).
+    if (await this.registrationFeeInput.isEditable()) {
+      await this.registrationFeeInput.fill(data.registrationFee);
+    }
     await this.maxTeamsInput.clear();
     await this.maxTeamsInput.fill(data.maxTeams);
 

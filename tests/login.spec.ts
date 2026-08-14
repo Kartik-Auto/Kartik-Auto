@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage } from './pages/LoginPage';
-import config from './config.json';
+import { config } from './helpers/env';
 
 test('Login with valid credentials should succeed', async ({ page }) => {
   const loginPage = new LoginPage(page);

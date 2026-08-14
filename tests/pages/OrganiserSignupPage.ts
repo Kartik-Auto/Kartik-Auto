@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker';
 import { EmailVerificationPage } from './EmailVerificationPage';
 import { RoleSelectionPage } from './RoleSelectionpage';
 import { pace } from '../helpers/pacing';
+import { getEnvConfig } from '../helpers/env';
 
 export const SIGNUP_PASSWORD = 'Test@123';
 export const SIGNUP_EMAIL_DOMAIN = 'mailinator.com';
@@ -22,7 +23,7 @@ export class OrganiserSignupPage {
   }
 
   async gotoSignup() {
-    await this.page.goto('https://stage.futureonesports.com/signup', {
+    await this.page.goto(getEnvConfig().signupUrl, {
       waitUntil: 'domcontentloaded',
     });
     await this.page.locator('input[name="firstName"]').waitFor({ state: 'visible' });

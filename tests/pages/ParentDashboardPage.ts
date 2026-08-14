@@ -28,14 +28,21 @@ export class ParentDashboardPage {
     await expect(this.childProfilesSection()).toBeVisible();
   }
 
-  /** Add Child now opens a right-side drawer instead of navigating to /child. */
+  /**
+   * Open the Add Child form. Stage opens a right-side drawer; UAT (drawer not yet
+   * shipped) navigates to a full page. Both render "Child Details" inside the form
+   * container, so we target whichever container holds that heading.
+   */
   async openAddChildProfile(): Promise<void> {
     await this.page.locator('main').getByRole('button', { name: 'Add Child', exact: true }).click();
 
-    const drawer = this.page.locator('[data-slot="drawer-content"]');
-    await expect(drawer).toBeVisible();
-    await expect(drawer.getByRole('heading', { name: 'Add Child Profile' })).toBeVisible();
-    await expect(drawer.getByRole('heading', { name: 'Child Details', exact: true })).toBeVisible();
+    const form = this.page
+      .locator('[data-slot="drawer-content"], main')
+      .filter({ has: this.page.getByRole('heading', { name: 'Child Details', exact: true }) })
+      .last();
+    await expect(form).toBeVisible();
+    await expect(form.getByRole('heading', { name: 'Add Child Profile' })).toBeVisible();
+    await expect(form.getByRole('heading', { name: 'Child Details', exact: true })).toBeVisible();
   }
 
   async expectChildListed(displayName: string, grade: string): Promise<void> {

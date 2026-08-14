@@ -4,7 +4,7 @@
 import { test } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { expectScreenshot, prepareForScreenshot } from '../helpers/visualRegression';
-import config from '../config.json';
+import { config } from '../helpers/env';
 
 test.describe('Visual — Login', { tag: '@visual' }, () => {
   test('Login page', async ({ page }) => {

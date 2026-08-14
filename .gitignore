@@ -7,8 +7,10 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
-# Local config (credentials)
+# Local config (credentials) — keep examples committed
 tests/config.json
+tests/config/stage.json
+tests/config/uat.json
 
 # IDE / tooling
 .idea/

@@ -74,39 +74,48 @@ export class AddChildProfilePage {
       : `${grade}th`;
   }
 
-  /** The form lives in a right-side drawer opened from the dashboard. */
-  formDrawer(): Locator {
-    return this.page.locator('[data-slot="drawer-content"]');
+  /**
+   * The Add Child form container. Stage renders it in a right-side drawer
+   * ([data-slot="drawer-content"]); UAT (drawer not yet shipped) renders it as a
+   * full page inside <main>. Filtering by the "Child Details" heading keeps this
+   * unambiguous: the dashboard <main> behind an open drawer has no such heading,
+   * so on Stage only the drawer matches.
+   */
+  formContainer(): Locator {
+    return this.page
+      .locator('[data-slot="drawer-content"], main')
+      .filter({ has: this.page.getByRole('heading', { name: 'Child Details', exact: true }) })
+      .last();
   }
 
   private childDetailsHeading(): Locator {
-    return this.formDrawer().getByRole('heading', { name: 'Child Details', exact: true });
+    return this.formContainer().getByRole('heading', { name: 'Child Details', exact: true });
   }
 
   private legalFirstNameInput(): Locator {
-    return this.formDrawer().locator('input[name="legalFirstName"]');
+    return this.formContainer().locator('input[name="legalFirstName"]');
   }
 
   private legalLastNameInput(): Locator {
-    return this.formDrawer().locator('input[name="lastName"]');
+    return this.formContainer().locator('input[name="lastName"]');
   }
 
   private preferredNameInput(): Locator {
-    return this.formDrawer().locator('input[name="firstName"]');
+    return this.formContainer().locator('input[name="firstName"]');
   }
 
   private schoolNameInput(): Locator {
-    return this.formDrawer().locator('input[name="schoolName"]');
+    return this.formContainer().locator('input[name="schoolName"]');
   }
 
   private sameNameCheckbox(): Locator {
-    return this.formDrawer().getByRole('checkbox', {
+    return this.formContainer().getByRole('checkbox', {
       name: /legal name and preferred name are same/i,
     });
   }
 
   private selectTrigger(label: RegExp): Locator {
-    return this.formDrawer().locator('button[data-slot="select-trigger"]').filter({ hasText: label });
+    return this.formContainer().locator('button[data-slot="select-trigger"]').filter({ hasText: label });
   }
 
   private genderCombobox(): Locator {
@@ -122,11 +131,11 @@ export class AddChildProfilePage {
   }
 
   private positionCombobox(): Locator {
-    return this.formDrawer().locator('button[role="combobox"][data-slot="popover-trigger"]');
+    return this.formContainer().locator('button[role="combobox"][data-slot="popover-trigger"]');
   }
 
   private submitButton(): Locator {
-    return this.formDrawer().getByRole('button', { name: 'Add Child', exact: true });
+    return this.formContainer().getByRole('button', { name: 'Add Child', exact: true });
   }
 
   private static dayOrdinal(day: number): string {
@@ -197,12 +206,12 @@ export class AddChildProfilePage {
   }
 
   private dateOfBirthTrigger(): Locator {
-    return this.formDrawer().locator('button[data-slot="popover-trigger"]:not([role="combobox"])').first();
+    return this.formContainer().locator('button[data-slot="popover-trigger"]:not([role="combobox"])').first();
   }
 
   async expectOnAddChildForm(): Promise<void> {
-    await expect(this.formDrawer()).toBeVisible();
-    await expect(this.formDrawer().getByRole('heading', { name: 'Add Child Profile' })).toBeVisible();
+    await expect(this.formContainer()).toBeVisible();
+    await expect(this.formContainer().getByRole('heading', { name: 'Add Child Profile' })).toBeVisible();
     await expect(this.childDetailsHeading()).toBeVisible();
   }
 
@@ -295,7 +304,8 @@ export class AddChildProfilePage {
     const responsePromise = this.createChildResponsePromise();
     await this.submitButton().click();
     const response = await responsePromise;
-    await expect(this.formDrawer()).toBeHidden();
+    // Stage closes the drawer; UAT navigates away. Either way the form heading goes.
+    await expect(this.page.getByRole('heading', { name: 'Add Child Profile' })).toBeHidden();
     return (await response.json()) as CreatedChildResponse;
   }
 
@@ -320,9 +330,12 @@ export class AddChildProfilePage {
   }
 
   private async expectProfileField(label: string, value: string): Promise<void> {
+    // Label casing differs across envs (Stage "First name" vs UAT "First Name"),
+    // so match the label case-insensitively while keeping the value assertion exact.
+    const labelRe = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
     const field = this.page
       .locator('main')
-      .getByText(label, { exact: true })
+      .getByText(labelRe)
       .locator('xpath=following-sibling::*[1]');
     await expect(field).toHaveText(value);
   }

@@ -2,7 +2,7 @@ import { test, expect, BrowserContext } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 import { LoginPage } from './pages/LoginPage';
 import { WaiverPage } from './pages/WaiverPage';
-import config from './config.json';
+import { config } from './helpers/env';
 
 test.describe.configure({ mode: 'serial' });
 

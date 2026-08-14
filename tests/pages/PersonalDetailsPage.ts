@@ -1,6 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 import { pace } from '../helpers/pacing';
+import { getEnvConfig } from '../helpers/env';
 
 export type PersonalDetailsData = {
   address: string;
@@ -137,6 +138,22 @@ export class PersonalDetailsPage {
     await expect(this.verifiedStatus).toBeVisible();
   }
 
+  /**
+   * Stage: full mobile OTP. UAT: skip OTP (fill mobile only if the field is present).
+   * Controlled by env `requireMobileOtp` (stage=true, uat=false by default).
+   */
+  async ensureMobileHandled(mobileNumber?: string, otpDigit = '1') {
+    if (getEnvConfig().requireMobileOtp) {
+      await this.completeMobileVerification(mobileNumber, otpDigit);
+      return;
+    }
+
+    const phone = mobileNumber ?? faker.string.numeric(10);
+    if (await this.mobileInput.isVisible().catch(() => false)) {
+      await this.fillMobileIfProvided(phone);
+    }
+  }
+
   async ensureOnPersonalDetailsPageForParent() {
     if (
       await this.page
@@ -187,8 +204,7 @@ export class PersonalDetailsPage {
   }
 
   /**
-   * Mobile + OTP (required) → address fields → Next into org Step-1.
-   * Matches parent signup OTP handling on staging.
+   * Mobile (OTP on Stage only) → address fields → Next into org Step-1.
    */
   async submitPersonalDetails(data: PersonalDetailsData) {
     const personalData = {
@@ -197,7 +213,7 @@ export class PersonalDetailsPage {
     };
 
     await this.ensureOnPersonalDetailsPage();
-    await this.completeMobileVerification(personalData.mobileNumber);
+    await this.ensureMobileHandled(personalData.mobileNumber);
     await this.fillPersonalDetails(personalData);
     await this.clickNext();
   }

@@ -20,12 +20,20 @@ export class TeamPage {
   constructor(page: Page) {
     this.page = page;
     this.teamsTab = page.getByRole('tab', { name: /Team & Roster/i });
-    this.createTeamButton = page.getByRole('button', { name: 'Create New Team', exact: true });
-    this.addMenuButton = page.locator('button').filter({ hasText: /^Add$/ });
-    this.createTeamMenu = page.getByRole('combobox').filter({
-      hasText: /Create New Team|^Add$|Select from My Teams/i,
-    });
+    // Scope CTAs to the Team & Roster panel so we never match unrelated page controls.
+    const panel = this.teamsPanel();
+    this.createTeamButton = panel.getByRole('button', { name: 'Create New Team', exact: true });
+    // Use getByRole('button') — locator('button') also matches <button role="combobox">.
+    this.addMenuButton = panel.getByRole('button', { name: 'Add', exact: true });
+    this.createTeamMenu = panel
+      .locator('[role="combobox"]:not([disabled]):not([data-disabled])')
+      .filter({ hasText: /Create New Team|^Add$|Select from My Teams/i });
     this.teamsHeading = page.getByRole('heading', { name: /Teams & Roster/i });
+  }
+
+  /** Team & Roster tab content — empty-state buttons and Add menu live here. */
+  private teamsPanel(): Locator {
+    return this.page.getByRole('tabpanel', { name: /Team & Roster/i });
   }
 
   static buildTeamData(overrides: Partial<TeamData> = {}): TeamData {
@@ -66,7 +74,7 @@ export class TeamPage {
   }
 
   selectFromMyTeamsButton(): Locator {
-    return this.page.getByRole('button', { name: /Select from My Teams/i });
+    return this.teamsPanel().getByRole('button', { name: /Select from My Teams/i });
   }
 
   teamNameInput(): Locator {
@@ -92,17 +100,38 @@ export class TeamPage {
   }
 
   /**
-   * Empty state may expose Create New Team as a button; otherwise open the
+   * Empty state exposes Create New Team as a button; otherwise open the
    * Create New Team / Add combobox and choose Create New Team.
    */
   async openCreateTeamDialog(): Promise<void> {
-    if (await this.createTeamButton.isVisible().catch(() => false)) {
+    await expect(this.teamsHeading).toBeVisible();
+    await this.waitForTeamEntryControls();
+
+    const noTeamsYet = this.teamsPanel().getByRole('heading', { name: /No teams yet/i });
+    if (
+      (await noTeamsYet.isVisible().catch(() => false))
+      || (await this.createTeamButton.isVisible().catch(() => false))
+    ) {
+      await expect(this.createTeamButton).toBeVisible();
       await this.createTeamButton.click();
     } else {
       await this.chooseTeamMenuOption('Create New Team');
     }
 
     await expect(this.createTeamDialog()).toBeVisible();
+  }
+
+  /**
+   * Wait for empty-state CTAs (No teams yet) or the populated-state Add/Create menu.
+   */
+  private async waitForTeamEntryControls(): Promise<void> {
+    await expect(this.teamsHeading).toBeVisible();
+    await this.createTeamButton
+      .or(this.selectFromMyTeamsButton())
+      .or(this.addMenuButton)
+      .or(this.createTeamMenu)
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
   /**
@@ -114,26 +143,45 @@ export class TeamPage {
     optionName: 'Create New Team' | 'Select from My Teams',
   ): Promise<void> {
     const resolveMenu = async () => {
+      if (await this.addMenuButton.isVisible().catch(() => false)) {
+        return this.addMenuButton;
+      }
       if (await this.createTeamMenu.isVisible().catch(() => false)) {
         return this.createTeamMenu;
       }
-      return this.addMenuButton;
+      throw new Error('Team entry menu (Add / Create New Team) is not available');
     };
 
     let menu = await resolveMenu();
     await expect(menu).toBeVisible();
+    await expect(menu).toBeEnabled();
 
     const currentLabel = ((await menu.innerText()) || '').replace(/\s+/g, ' ').trim();
     await menu.click();
     await expect(this.page.getByRole('option').first()).toBeVisible();
 
-    if (optionName === 'Create New Team' && /Create New Team/i.test(currentLabel)) {
-      await this.page.getByRole('option', { name: 'Select from My Teams', exact: true }).click();
-      if (await this.selectFromMyTeamsDialog().isVisible().catch(() => false)) {
-        await this.cancelSelectFromMyTeams();
+    // Radix does not re-fire when the already-selected option is clicked again —
+    // toggle via the other option first so the target dialog opens.
+    const alreadySelected =
+      (optionName === 'Create New Team' && /Create New Team/i.test(currentLabel))
+      || (optionName === 'Select from My Teams' && /Select from My Teams/i.test(currentLabel));
+
+    if (alreadySelected) {
+      const otherOption =
+        optionName === 'Create New Team' ? 'Select from My Teams' : 'Create New Team';
+      await this.page.getByRole('option', { name: otherOption, exact: true }).click();
+
+      if (otherOption === 'Select from My Teams') {
+        if (await this.selectFromMyTeamsDialog().isVisible().catch(() => false)) {
+          await this.cancelSelectFromMyTeams();
+        }
+      } else if (await this.createTeamDialog().isVisible().catch(() => false)) {
+        await this.cancelCreateTeam();
       }
+
       menu = await resolveMenu();
       await expect(menu).toBeVisible();
+      await expect(menu).toBeEnabled();
       await menu.click();
       await expect(this.page.getByRole('option').first()).toBeVisible();
     }
@@ -230,11 +278,19 @@ export class TeamPage {
   }
 
   /**
-   * Empty state may expose Select from My Teams directly; otherwise open the
+   * Empty state exposes Select from My Teams directly; otherwise open the
    * Create New Team / Add menu and choose Select from My Teams.
    */
   async openSelectFromMyTeamsDialog(): Promise<void> {
-    if (await this.selectFromMyTeamsButton().isVisible().catch(() => false)) {
+    await expect(this.teamsHeading).toBeVisible();
+    await this.waitForTeamEntryControls();
+
+    const noTeamsYet = this.teamsPanel().getByRole('heading', { name: /No teams yet/i });
+    if (
+      (await noTeamsYet.isVisible().catch(() => false))
+      || (await this.selectFromMyTeamsButton().isVisible().catch(() => false))
+    ) {
+      await expect(this.selectFromMyTeamsButton()).toBeVisible();
       await this.selectFromMyTeamsButton().click();
     } else {
       await this.chooseTeamMenuOption('Select from My Teams');
