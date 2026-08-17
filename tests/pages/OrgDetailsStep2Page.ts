@@ -75,16 +75,30 @@ export class OrgDetailsStep2Page {
     await this.headingText.click();
   }
 
-  /** Type address and select the first suggestion from the address field dropdown only. */
+  /**
+   * Type address and prefer the first Places suggestion when available.
+   * Stage usually returns suggestions; UAT often does not (API key / Places lag),
+   * so fall back to free-form entry and let city/state/zip fillers cover the rest.
+   */
   private async fillAddressWithFirstSuggestion(address: string) {
     await this.addressInput.click();
     await this.addressInput.fill(address);
 
     const dropdown = this.autocompleteDropdown(this.addressInput);
     const firstSuggestion = dropdown.getByRole('listitem').first();
-    await expect(firstSuggestion).toBeVisible();
-    await firstSuggestion.click();
-    await expect(dropdown).toBeHidden();
+
+    try {
+      await expect(firstSuggestion).toBeVisible({ timeout: 5000 });
+      await firstSuggestion.click();
+      await expect(dropdown).toBeHidden();
+    } catch {
+      // No suggestion list — keep the typed address and dismiss any empty overlay.
+      await this.dismissAutocompleteDropdowns();
+      if (!(await this.fieldHasValue(this.addressInput))) {
+        await this.fillWithRandomTestId(this.addressInput, address, 'org-address');
+      }
+    }
+
     await pace(this.page);
   }
 

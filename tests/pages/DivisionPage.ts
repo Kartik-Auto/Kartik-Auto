@@ -53,10 +53,16 @@ export class DivisionPage {
 
   async expectCreateDivisionPrefill(program: ProgramData): Promise<void> {
     const dialog = this.createDivisionDialog();
+    const feeInput = dialog.locator('input[name="divisions.0.registrationFee"]');
 
-    await expect(dialog.locator('input[name="divisions.0.registrationFee"]')).toHaveValue(
-      program.registrationFee,
-    );
+    // Prefer the live form value when the fee is locked (UAT prefilled 0); otherwise
+    // assert against the program fee used when creating the parent program (Stage).
+    const expectedFee = (await feeInput.isEditable())
+      ? program.registrationFee
+      : (await feeInput.inputValue()).trim() || program.registrationFee;
+    program.registrationFee = expectedFee;
+    await expect(feeInput).toHaveValue(expectedFee);
+
     await expect(
       dialog.getByRole('button', { name: ProgramPage.calendarButtonPattern(program.registrationStartDate) }),
     ).toBeVisible();

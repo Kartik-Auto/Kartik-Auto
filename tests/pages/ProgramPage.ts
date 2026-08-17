@@ -238,8 +238,11 @@ export class ProgramPage {
     await this.programNameInput.fill(data.name);
     await this.descriptionInput.fill(data.description);
     // Stage allows editing registration fee; UAT currently locks it (prefilled 0).
+    // Keep data.registrationFee in sync with the form so division/overview asserts match.
     if (await this.registrationFeeInput.isEditable()) {
       await this.registrationFeeInput.fill(data.registrationFee);
+    } else {
+      data.registrationFee = (await this.registrationFeeInput.inputValue()).trim();
     }
     await this.maxTeamsInput.clear();
     await this.maxTeamsInput.fill(data.maxTeams);
