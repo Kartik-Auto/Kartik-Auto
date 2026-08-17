@@ -148,29 +148,39 @@ export class LocationPage {
     await form.getByRole('button', { name: 'Add More Field' }).click();
   }
 
+  /**
+   * After submit/cancel: Stage hides the dialog; UAT leaves /create.
+   * Do not race dialog "hidden" when the dialog was never open — that resolves
+   * immediately on UAT and caused waitForListPage to navigate away mid-save.
+   */
+  private async waitForFormClosed(openedAsDialog: boolean): Promise<void> {
+    if (openedAsDialog) {
+      await this.dialogForm().waitFor({ state: 'hidden' });
+      return;
+    }
+
+    await this.page.waitForURL(
+      (url) => !/\/settings\/location\/create\/?$/.test(url.pathname),
+      { timeout: 30000 },
+    );
+  }
+
   async clickAddLocations() {
     this.log('Submitting location form (Add Locations on Stage / Save on UAT)');
+    const openedAsDialog = await this.dialogForm().isVisible().catch(() => false);
     const form = await this.formRoot();
     // Stage: "Add Locations"; UAT create page: "Save"
     await form.getByRole('button', { name: /^(Add Locations|Save)$/ }).click();
-
-    // Stage closes the dialog on the list URL; UAT may navigate to list or dashboard.
-    await Promise.race([
-      this.dialogForm().waitFor({ state: 'hidden' }).catch(() => undefined),
-      this.page.waitForURL(/\/settings\/location\/?$/).catch(() => undefined),
-      this.page.waitForURL(/\/$/).catch(() => undefined),
-    ]);
+    await this.waitForFormClosed(openedAsDialog);
     await this.waitForListPage();
   }
 
   async cancelAddLocation() {
     this.log('Clicking Cancel on location form');
+    const openedAsDialog = await this.dialogForm().isVisible().catch(() => false);
     const form = await this.formRoot();
     await form.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await Promise.race([
-      this.dialogForm().waitFor({ state: 'hidden' }).catch(() => undefined),
-      this.page.waitForURL(/\/settings\/location\/?$/).catch(() => undefined),
-    ]);
+    await this.waitForFormClosed(openedAsDialog);
     await this.waitForListPage();
   }
 
@@ -190,7 +200,17 @@ export class LocationPage {
   async expectLocationInList(data: LocationData) {
     this.log(`Verifying location in list: ${data.name}`);
     const row = this.locationRow(data.name);
-    await expect(row).toBeVisible();
+
+    // List can lag after Save (especially on UAT); reload once if the row is missing.
+    try {
+      await expect(row).toBeVisible({ timeout: 10000 });
+    } catch {
+      this.log('Location row not visible yet — reloading list');
+      await this.page.reload({ waitUntil: 'domcontentloaded' });
+      await this.waitForListPage();
+      await expect(row).toBeVisible();
+    }
+
     await expect(row.getByRole('cell', { name: data.name })).toBeVisible();
     // "No of fields" is the third column (Location, Address, No of fields, Actions).
     await expect(row.getByRole('cell').nth(2)).toHaveText(String(data.fields.length));
