@@ -250,6 +250,67 @@ export class TeamPage {
     await expect(this.teamRow(teamName)).toContainText(teamName);
   }
 
+  /** Open a listed team to its roster page. */
+  async openTeam(teamName: string): Promise<void> {
+    await this.expectTeamInList(teamName);
+    await this.teamRow(teamName).getByRole('cell').first().click();
+    await expect(this.page).toHaveURL(/\/team\/\d+/);
+    await expect(this.page.getByRole('heading', { name: /No players yet/i }).or(
+      this.page.getByRole('button', { name: 'Edit Roster', exact: true }),
+    ).first()).toBeVisible();
+  }
+
+  /**
+   * Organization name as shown on the Team & Roster table (column after team name).
+   */
+  async getListedTeamOrganization(teamName: string): Promise<string> {
+    const cell = this.teamRow(teamName).getByRole('cell').nth(1);
+    await expect(cell).toBeVisible();
+    const name = (await cell.innerText()).trim().split('\n')[0]?.trim() ?? '';
+    expect(name.length, 'Expected organization name on the team row').toBeGreaterThan(0);
+    return name;
+  }
+
+  /**
+   * Whether Team & Roster already lists at least one team. Opens the tab first
+   * and resolves false (instead of throwing) on the empty state.
+   */
+  async hasExistingTeams(): Promise<boolean> {
+    await this.openTeamsAndRosterTab();
+
+    const noTeamsYet = this.teamsPanel().getByRole('heading', { name: /No teams yet/i });
+    const firstTeamRow = this.page.getByRole('row').nth(1);
+    await noTeamsYet
+      .or(firstTeamRow)
+      .first()
+      .waitFor({ state: 'visible' })
+      .catch(() => {});
+
+    if (await noTeamsYet.isVisible().catch(() => false)) return false;
+    return await firstTeamRow.isVisible().catch(() => false);
+  }
+
+  /**
+   * Open the first team already on Team & Roster. Creates one only when the
+   * program has no teams yet.
+   */
+  async openExistingTeam(): Promise<{ teamName: string; organizationName: string }> {
+    await this.openTeamsAndRosterTab();
+
+    const noTeamsYet = this.teamsPanel().getByRole('heading', { name: /No teams yet/i });
+    if (await noTeamsYet.isVisible().catch(() => false)) {
+      const team = await this.createTeam();
+      const organizationName = await this.getListedTeamOrganization(team.name);
+      await this.openTeam(team.name);
+      return { teamName: team.name, organizationName };
+    }
+
+    const teamName = await this.getFirstListedTeamName();
+    const organizationName = await this.getListedTeamOrganization(teamName);
+    await this.openTeam(teamName);
+    return { teamName, organizationName };
+  }
+
   async expectTeamNotInList(teamName: string): Promise<void> {
     await expect(this.teamRow(teamName)).toHaveCount(0);
   }

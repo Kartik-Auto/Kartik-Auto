@@ -100,7 +100,7 @@ npx playwright show-trace test-results/<folder>/trace.zip
 |---|---|
 | Pull request → `main`/`master` | Stage only (fast feedback) |
 | Push → `main`/`master` | Stage + UAT |
-| Nightly schedule (02:00 UTC) | Stage + UAT |
+| Weekly schedule (Mon/Wed/Fri, 02:00 UTC) | Stage + UAT |
 | Manual **Run workflow** | Pick `stage`, `uat`, or `both` |
 
 Credentials are never committed. In CI, `scripts/write-ci-config.mjs` generates

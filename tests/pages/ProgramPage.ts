@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 import { getEnvConfig } from '../helpers/env';
 import { randomAlpha } from '../helpers/testData';
+import { TeamPage } from './TeamPage';
 
 export type ProgramData = {
   name: string;
@@ -367,15 +368,97 @@ export class ProgramPage {
     await divisionsTab.click();
     await expect(divisionsTab).toHaveAttribute('aria-selected', 'true');
 
-    // Division cards are role=button wrappers containing an h3 title
-    const divisionCards = this.page.locator('[role="button"]').filter({
-      has: this.page.locator('h3'),
-    });
+    const divisionCards = this.divisionCards();
     await expect(divisionCards.first()).toBeVisible();
     await divisionCards.first().click();
 
     await expect(this.page.getByRole('tab', { name: /Team & Roster/i })).toBeVisible();
     return programName;
+  }
+
+  /** Division cards are role=button wrappers containing an h3 title. */
+  private divisionCards(): Locator {
+    return this.page.locator('[role="button"]').filter({ has: this.page.locator('h3') });
+  }
+
+  /**
+   * Same navigation as openExistingProgramWithTeamsRoster, but resolves false
+   * instead of failing so callers can skip a program and try the next one.
+   */
+  private async tryRevealTeamsRosterTab(): Promise<boolean> {
+    const teamsTab = this.page.getByRole('tab', { name: /Team & Roster/i });
+    const divisionsTab = this.page.getByRole('tab', { name: /Divisions/i });
+
+    await teamsTab
+      .or(divisionsTab)
+      .first()
+      .waitFor({ state: 'visible' })
+      .catch(() => {});
+
+    if (await teamsTab.isVisible().catch(() => false)) return true;
+    if (!(await divisionsTab.isVisible().catch(() => false))) return false;
+
+    await divisionsTab.click();
+    await expect(divisionsTab).toHaveAttribute('aria-selected', 'true');
+
+    const firstDivision = this.divisionCards().first();
+    await firstDivision.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+    if (!(await firstDivision.isVisible().catch(() => false))) return false;
+    await firstDivision.click();
+
+    await teamsTab.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+    return await teamsTab.isVisible().catch(() => false);
+  }
+
+  /** Program name + link href for every program row on the list. */
+  private async listedProgramLinks(): Promise<Array<{ name: string; href: string }>> {
+    const links = this.page.locator('main a[href*="/programs/"]');
+    const total = await links.count();
+    const programs: Array<{ name: string; href: string }> = [];
+
+    for (let i = 0; i < total; i++) {
+      const link = links.nth(i);
+      const href = (await link.getAttribute('href')) ?? '';
+      const name = ((await link.textContent()) ?? '').trim().split('\n')[0]?.trim() ?? '';
+      if (!/\/programs\/\d+/.test(href) || !name) continue;
+      if (programs.some((program) => program.href === href)) continue;
+      programs.push({ name, href });
+    }
+
+    return programs;
+  }
+
+  /**
+   * Open the first program whose Team & Roster already lists a team, so tests
+   * act on data an organiser can also find manually. Never creates a program.
+   */
+  async openProgramWithExistingTeams(maxCandidates = 8): Promise<string> {
+    await this.openProgramsList();
+    const candidates = (await this.listedProgramLinks()).slice(0, maxCandidates);
+    expect(candidates.length, 'Expected at least one program on the program list').toBeGreaterThan(0);
+
+    const skipped: string[] = [];
+
+    for (const candidate of candidates) {
+      if (skipped.length > 0) {
+        await this.openProgramsList();
+      }
+
+      await this.page.locator(`main a[href="${candidate.href}"]`).first().click();
+      await expect(this.page).toHaveURL(/\/programs\/\d+/);
+      await expect(this.page.getByRole('tab').first()).toBeVisible();
+
+      const hasTeams =
+        (await this.tryRevealTeamsRosterTab())
+        && (await new TeamPage(this.page).hasExistingTeams().catch(() => false));
+
+      if (hasTeams) return candidate.name;
+      skipped.push(candidate.name);
+    }
+
+    throw new Error(
+      `No program with an existing team was found. Checked: ${skipped.join(', ')}`,
+    );
   }
 
   async completeTournamentDetails(): Promise<{ gender: string; level: string }> {
