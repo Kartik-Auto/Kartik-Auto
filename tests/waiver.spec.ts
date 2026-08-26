@@ -33,6 +33,7 @@ test.describe('Waiver creation', () => {
   test.beforeEach(async () => {
     console.log('[waiver.spec] Ensuring on waivers list page');
     await waiverPage.waitForListPage();
+    await waiverPage.clearSearch();
   });
 
   // Verify the waiver settings page loads and the search input works

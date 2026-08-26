@@ -56,6 +56,19 @@ export class WaiverPage {
     await expect(this.createWaiverButton).toBeVisible();
   }
 
+  /** Reset the list filter so a search term never hides rows for later checks. */
+  async clearSearch() {
+    if (!(await this.searchInput.inputValue())) return;
+
+    const clearButton = this.page.getByRole('button', { name: 'Clear search' });
+    if (await clearButton.isVisible().catch(() => false)) {
+      await clearButton.click();
+    } else {
+      await this.searchInput.fill('');
+    }
+    await expect(this.searchInput).toHaveValue('');
+  }
+
   async waitForCreateForm() {
     await expect(this.page.getByRole('heading', { name: 'Waiver Type *' })).toBeVisible();
     await expect(this.publishButton).toBeVisible();
@@ -113,8 +126,9 @@ export class WaiverPage {
   async expectWaiverInList(data: WaiverData, status: WaiverStatus) {
     const row = this.waiverRow(data.name);
     await expect(row).toBeVisible();
-    // Status column is the second cell (after Waivers Name).
-    await expect(row.getByRole('cell').nth(1)).toHaveText(status);
+    // Stage and UAT order the list columns differently, so match the status
+    // badge by its text rather than a fixed column position.
+    await expect(row.getByText(status, { exact: true })).toBeVisible();
     await expect(row).toContainText(data.waiverType);
     await expect(row).toContainText(data.programType);
   }
