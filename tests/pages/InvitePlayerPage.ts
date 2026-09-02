@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Response } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 
 export type PlayerInviteData = {
@@ -8,6 +8,13 @@ export type PlayerInviteData = {
   contactNumber: string;
   jerseyNumber: string;
   position: string;
+};
+
+export type InviteSubmitResult = {
+  player: PlayerInviteData;
+  apiStatus: number;
+  apiUrl: string;
+  apiBody: unknown;
 };
 
 export class InvitePlayerPage {
@@ -113,7 +120,7 @@ export class InvitePlayerPage {
     await expect(this.playerForm().getByRole('textbox', { name: /First name/i })).toBeVisible();
   }
 
-  async fillAndSubmitPlayerForm(data: PlayerInviteData): Promise<PlayerInviteData> {
+  async fillAndSubmitPlayerForm(data: PlayerInviteData): Promise<InviteSubmitResult> {
     const form = this.playerForm();
     await form.getByRole('textbox', { name: /First name/i }).fill(data.firstName);
     await form.getByRole('textbox', { name: /Last name/i }).fill(data.lastName);
@@ -138,9 +145,55 @@ export class InvitePlayerPage {
     await option.click();
     data.position = position;
 
+    const inviteApi = this.page.waitForResponse((response) =>
+      this.isInviteSubmitResponse(response, data),
+    );
     await form.getByRole('button', { name: 'Invite Player', exact: true }).click();
+    const apiResponse = await inviteApi;
+    expect(
+      apiResponse.ok(),
+      `Invite API ${apiResponse.request().method()} ${apiResponse.url()} returned ${apiResponse.status()}`,
+    ).toBeTruthy();
+    console.log(
+      `[InviteNewPlayer] Invite API ${apiResponse.request().method()} ${apiResponse.status()} ${apiResponse.url()}`,
+    );
+
+    let apiBody: unknown = {};
+    const raw = await apiResponse.text();
+    if (raw.trim()) {
+      try {
+        apiBody = JSON.parse(raw) as unknown;
+      } catch {
+        throw new Error(
+          `Invite API ${apiResponse.url()} returned non-JSON body: ${raw.slice(0, 200)}`,
+        );
+      }
+    }
+
     await expect(form).toBeHidden();
-    return data;
+    return {
+      player: data,
+      apiStatus: apiResponse.status(),
+      apiUrl: apiResponse.url(),
+      apiBody,
+    };
+  }
+
+  /**
+   * Stage and UAT both POST to /api/v1/player-invites/new-player (201).
+   * Match the path plus the player payload so a nearby POST cannot steal the wait.
+   */
+  private isInviteSubmitResponse(response: Response, data: PlayerInviteData): boolean {
+    if (response.request().method() !== 'POST') return false;
+    if (!response.url().includes('/api/v1/player-invites/new-player')) return false;
+    if (response.status() !== 200 && response.status() !== 201) return false;
+
+    const postData = response.request().postData() ?? '';
+    return (
+      postData.includes(data.guardianEmail)
+      || postData.includes(data.firstName)
+      || postData.includes(data.lastName)
+    );
   }
 
   async expectInvitationSucceeded(data: PlayerInviteData): Promise<void> {

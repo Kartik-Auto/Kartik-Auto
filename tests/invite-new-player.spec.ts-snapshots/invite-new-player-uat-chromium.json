@@ -1,0 +1,22 @@
+{
+  "data": {
+    "id": "<number>",
+    "firstName": "<string>",
+    "lastName": "<string>",
+    "email": "<string>",
+    "phoneNumber": "<string>",
+    "position": "Goalie",
+    "jerseyNumber": "<string>",
+    "teamId": "<number>",
+    "programId": "<number>",
+    "inviteStatus": "Added",
+    "isExistingPlayer": false,
+    "token": "<string>",
+    "invitationSentBy": "<number>",
+    "createdAt": "<string>",
+    "updatedAt": "<string>",
+    "isLateAddition": false
+  },
+  "message": "Players have been added to the team",
+  "timestamp": "<number>"
+}

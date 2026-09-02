@@ -6,7 +6,8 @@ import { InvitePlayerPage } from './pages/InvitePlayerPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProgramPage } from './pages/ProgramPage';
 import { TeamPage } from './pages/TeamPage';
-import { config } from './helpers/env';
+import { redactApiBody } from './helpers/apiSnapshot';
+import { config, getEnvName } from './helpers/env';
 
 test.describe('Invite New Player — FutureOne Sports', () => {
   test('INV-01 | Invite new player linked to unknown guardian', async ({ page }) => {
@@ -37,7 +38,21 @@ test.describe('Invite New Player — FutureOne Sports', () => {
     await invitePlayer.expectGuardianDoesNotExist();
 
     await invitePlayer.openLinkedPlayerForm();
-    await invitePlayer.fillAndSubmitPlayerForm(player);
+    const { apiBody } = await invitePlayer.fillAndSubmitPlayerForm(player);
+    // UI + API: form closes only after a 200/201 invite request that carries this player.
+    const stableBody = redactApiBody(apiBody, [
+      player.guardianEmail,
+      player.firstName,
+      player.lastName,
+      player.contactNumber,
+      player.jerseyNumber,
+      teamName,
+      organizationName,
+      programName,
+    ]);
+    expect(`${JSON.stringify(stableBody, null, 2)}\n`).toMatchSnapshot({
+      name: `invite-new-player-${getEnvName()}.json`,
+    });
     await invitePlayer.expectInvitationSucceeded(player);
     await invitePlayer.expectPlayerOnRosterOnce(player);
 

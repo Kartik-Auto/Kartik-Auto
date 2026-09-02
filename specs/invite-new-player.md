@@ -49,7 +49,8 @@ Organizers invite a player onto an **existing** team roster by guardian email. W
 
 **Expected Results:**
 
-- Invite succeeds (form closes; player is not blocked by an error toast).
+- Invite succeeds: the invite API returns 200 or 201 (Stage and UAT), the form closes, and the player is not blocked by an error toast.
+- The invite JSON shape matches the env snapshot (`invite-new-player-stage` / `invite-new-player-uat`); ids, emails, names, and timestamps are redacted.
 - The new player appears on the team roster **exactly once**.
 - Row shows first + last name, guardian email, contact number, jersey number, selected position, and **Invited** status.
 
