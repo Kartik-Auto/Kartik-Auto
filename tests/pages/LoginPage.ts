@@ -26,11 +26,14 @@ export class LoginPage {
     await expect(this.emailInput).toBeVisible();
     await this.emailInput.fill(username);
 
-    // This login page is a two-step flow: email first, then password appears.
-    // If password is already present, the click is harmless (no-op navigation).
-    await this.loginButton.click();
+    // Stage currently shows email + password together. Clicking Login before the
+    // password is filled submits an empty password and leaves the user on /login.
+    // UAT (and older Stage) still reveal the password after the first click.
+    if (!(await this.passwordInput.isVisible().catch(() => false))) {
+      await this.loginButton.click();
+      await expect(this.passwordInput).toBeVisible();
+    }
 
-    await expect(this.passwordInput).toBeVisible();
     await this.passwordInput.fill(password);
     await this.loginButton.click();
     await expect(this.page).not.toHaveURL(/login/i);
