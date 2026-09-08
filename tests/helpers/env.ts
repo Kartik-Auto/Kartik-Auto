@@ -70,9 +70,10 @@ function normalize(name: EnvName, raw: RawEnvConfig): EnvConfig {
     password: raw.password ?? '',
     parentUsername: raw.parentUsername ?? '',
     parentPassword: raw.parentPassword ?? '',
-    // Stage keeps OTP / personal-details / fee dialog; UAT skips unless enabled.
-    requireMobileOtp: raw.requireMobileOtp ?? name !== 'uat',
-    organiserPersonalDetailsStep: raw.organiserPersonalDetailsStep ?? name !== 'uat',
+    // UAT v2 matches Stage for OTP and organiser personal details.
+    // Fee-policy dialog remains Stage-only unless enabled in JSON.
+    requireMobileOtp: raw.requireMobileOtp ?? true,
+    organiserPersonalDetailsStep: raw.organiserPersonalDetailsStep ?? true,
     programFeePolicyDialog: raw.programFeePolicyDialog ?? name !== 'uat',
   };
 }

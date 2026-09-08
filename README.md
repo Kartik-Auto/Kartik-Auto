@@ -69,7 +69,7 @@ npx playwright test --project=visual --update-snapshots --workers=1
 
 Specs and page objects are shared. Only URLs/credentials change per env. Locators stay shared; if UAT differs, prefer resilient role/label/`data-testid` locators rather than forking specs.
 
-Two per-env feature flags handle onboarding differences (both default to `true` on Stage and `false` on UAT, and can be overridden in the config JSON):
+Two per-env feature flags handle remaining product differences (override in the config JSON). UAT v2 matches Stage for mobile OTP and organiser personal details; the fee-policy dialog is still Stage-only:
 
 | Flag | Effect when `false` |
 |---|---|
@@ -113,9 +113,9 @@ Credentials are never committed. In CI, `scripts/write-ci-config.mjs` generates
 | `STAGE_USERNAME` / `STAGE_PASSWORD` | `UAT_USERNAME` / `UAT_PASSWORD` |
 | `STAGE_PARENT_USERNAME` / `STAGE_PARENT_PASSWORD` | `UAT_PARENT_USERNAME` / `UAT_PARENT_PASSWORD` |
 
-The feature flags (`requireMobileOtp`, `organiserPersonalDetailsStep`,
-`programFeePolicyDialog`) are set automatically by the generator: `true` for Stage,
-`false` for UAT. Each environment uploads its own report artifact
+The feature flags are set automatically by the generator: `requireMobileOtp` and
+`organiserPersonalDetailsStep` are `true` for Stage and UAT (v2); `programFeePolicyDialog`
+is `true` for Stage and `false` for UAT. Each environment uploads its own report artifact
 (`playwright-report-<env>`); failures also upload `playwright-test-results-<env>`.
 
 > Visual tests are intentionally left out of CI for now: `snapshotPathTemplate` in

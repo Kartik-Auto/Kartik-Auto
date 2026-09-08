@@ -25,8 +25,9 @@ if (!origin) {
 
 const trimmedOrigin = origin.replace(/\/$/, '');
 
-// Stage keeps the OTP / personal-details / fee-dialog flows; UAT skips them.
-const stageDefaults = env !== 'uat';
+// UAT v2 matches Stage for mobile OTP and organiser personal details.
+// The program fee-policy dialog is still Stage-only.
+const isUat = env === 'uat';
 
 const config = {
   name: env,
@@ -39,9 +40,9 @@ const config = {
   password: read('PASSWORD') ?? '',
   parentUsername: read('PARENT_USERNAME') ?? '',
   parentPassword: read('PARENT_PASSWORD') ?? '',
-  requireMobileOtp: stageDefaults,
-  organiserPersonalDetailsStep: stageDefaults,
-  programFeePolicyDialog: stageDefaults,
+  requireMobileOtp: true,
+  organiserPersonalDetailsStep: true,
+  programFeePolicyDialog: !isUat,
 };
 
 const outDir = path.join(process.cwd(), 'tests', 'config');

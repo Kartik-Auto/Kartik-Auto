@@ -139,8 +139,7 @@ export class PersonalDetailsPage {
   }
 
   /**
-   * Stage: full mobile OTP. UAT: skip OTP (fill mobile only if the field is present).
-   * Controlled by env `requireMobileOtp` (stage=true, uat=false by default).
+   * Stage and UAT v2: full mobile OTP. Older UAT skipped OTP when requireMobileOtp was false.
    */
   async ensureMobileHandled(mobileNumber?: string, otpDigit = '1') {
     if (getEnvConfig().requireMobileOtp) {
