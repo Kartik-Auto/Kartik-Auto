@@ -28,7 +28,7 @@ Edit credentials in `tests/config.json` (legacy) or `tests/config/stage.json`.
 cp tests/config/uat.example.json tests/config/uat.json
 ```
 
-Edit `tests/config/uat.json` with UAT origin + credentials (update the host if your UAT URL differs).
+Edit `tests/config/uat.json` with credentials. The default host is UAT v2 (`https://uat.v2.futureonesports.com`).
 
 ## Run tests
 
