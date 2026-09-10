@@ -23,8 +23,39 @@ export class StaffDetailsPage {
 
 
   async navigateToStaffDetailsViaSettings() {
-    // Navigate to settings and click on staff details
-    await this.page.getByRole('link', { name: 'Staff Details' }).click();
+    const link = this.page.getByRole('link', { name: 'Staff Details' });
+    if (!(await link.isVisible().catch(() => false))) {
+      await this.page.getByRole('button', { name: 'Settings' }).click();
+    }
+    await link.click();
+  }
+
+  /**
+   * sportspass001 (and similar) belong to multiple orgs. Open the header
+   * profile, View all accounts, and switch to the org that received the join request.
+   */
+  async selectOrganisationFromProfile(organisationName: string): Promise<void> {
+    const profile = this.page.getByRole('banner').getByRole('button', { name: /\|/ });
+    await expect(profile).toBeVisible();
+    await profile.click();
+
+    const menu = this.page.getByRole('menu');
+    await expect(menu).toBeVisible();
+
+    const viewAll = menu.getByText(/View all accounts/i);
+    if (await viewAll.isVisible().catch(() => false)) {
+      await viewAll.click();
+      await expect(this.page.getByRole('heading', { name: /My Accounts/i })).toBeVisible();
+      await expect(this.page.getByText(/Role:\s*Admin/i).first()).toBeVisible();
+      const orgName = this.page.getByText(organisationName, { exact: true });
+      await expect(orgName.first(), `Expected org "${organisationName}" on My Accounts`).toBeVisible();
+      await orgName.first().click();
+    } else {
+      await menu.getByText(organisationName, { exact: true }).click();
+    }
+
+    await expect(this.page.getByRole('heading', { name: /My Accounts/i })).toHaveCount(0);
+    await expect(this.page.getByRole('link', { name: 'Staff Details' })).toBeVisible();
   }
 
   async clickAddStaffMember() {
@@ -79,18 +110,80 @@ export class StaffDetailsPage {
 
   staffListRow(data: Pick<StaffMemberData, 'email'>) {
     return this.page.getByRole('row').filter({
-      has: this.page.getByRole('cell', { name: data.email }),
+      has: this.page.getByText(data.email, { exact: true }),
     });
   }
 
-  async expectStaffInList(data: StaffMemberData) {
+  async expectStaffInList(data: Pick<StaffMemberData, 'firstName' | 'lastName' | 'email'> & Partial<Pick<StaffMemberData, 'role' | 'phoneNumber'>>) {
     const fullName = `${data.firstName} ${data.lastName}`;
     const row = this.staffListRow(data);
 
     await expect(row).toBeVisible();
-    await expect(row.getByRole('cell', { name: fullName })).toBeVisible();
-    await expect(row.getByRole('cell', { name: data.email })).toBeVisible();
-    await expect(row.getByRole('cell', { name: data.role })).toBeVisible();
+    await expect(row).toContainText(fullName);
+    await expect(row).toContainText(data.email);
+    if (data.role) {
+      await expect(row).toContainText(data.role);
+    }
+  }
+
+  staffMembersTab(): Locator {
+    return this.page.getByRole('tab', { name: /Staff Member/i });
+  }
+
+  staffRequestRow(email: string): Locator {
+    return this.page.getByRole('row').filter({
+      has: this.page.getByText(email, { exact: true }),
+    });
+  }
+
+  async openStaffMembers(): Promise<void> {
+    const tab = this.staffMembersTab();
+    if (await tab.isVisible().catch(() => false)) {
+      await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
+    }
+  }
+
+  async expectApprovedStaffInList(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    role?: StaffRole;
+  }): Promise<void> {
+    await this.openStaffMembers();
+    await this.expectStaffInList({ ...data, role: data.role ?? 'Admin' });
+  }
+
+  staffRequestTab(): Locator {
+    return this.page.getByRole('tab', { name: /Request/i });
+  }
+
+  async openStaffRequests(): Promise<void> {
+    const tab = this.staffRequestTab();
+    if (await tab.isVisible().catch(() => false)) {
+      await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
+    }
+  }
+
+  async expectJoinRequest(data: { firstName: string; lastName: string; email: string }): Promise<void> {
+    await this.openStaffRequests();
+    const row = this.staffRequestRow(data.email);
+    await expect(row, `Expected a staff request row for ${data.email}`).toBeVisible();
+    await expect(row).toContainText(data.firstName);
+    await expect(row).toContainText(data.lastName);
+    await expect(row).toContainText(data.email);
+  }
+
+  async acceptJoinRequest(email: string): Promise<void> {
+    const row = this.staffRequestRow(email);
+    await expect(row).toBeVisible();
+    const action = row.getByRole('button', { name: /Accept|Approve/i });
+    await expect(action).toBeVisible();
+    await action.click();
+    await expect(this.page.getByText(/accepted|approved/i).first()).toBeVisible({ timeout: 15_000 }).catch(async () => {
+      await expect(row.getByRole('button', { name: /Accept|Approve/i })).toHaveCount(0);
+    });
   }
 }
 

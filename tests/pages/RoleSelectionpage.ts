@@ -70,6 +70,13 @@ export class RoleSelectionPage {
     await this.clickContinue();
   }
 
+  async chooseStaffOnly() {
+    await this.selectStaffMember();
+    await expect(this.roleRadio('ORGANIZATION_ADMIN')).not.toBeChecked();
+    await expect(this.roleRadio('PARENT')).not.toBeChecked();
+    await this.clickContinue();
+  }
+
   async chooseRole(role: RoleType = 'ORGANIZATION_ADMIN') {
     if (role !== 'ORGANIZATION_ADMIN') {
       throw new Error('Organiser signup supports Organizer role only');

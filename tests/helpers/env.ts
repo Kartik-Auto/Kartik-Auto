@@ -16,6 +16,16 @@ export type EnvConfig = {
   password: string;
   parentUsername: string;
   parentPassword: string;
+  /** Org admin who accepts staff join requests. */
+  staffApproverUsername: string;
+  staffApproverPassword: string;
+  /** Organisation ID entered on Find Existing Organisation, e.g. ORG-578. */
+  staffJoinOrgId: string;
+  /**
+   * Org shown in the approver profile / My Accounts list (UAT v2: Morrow Vasquez Traders).
+   * When empty, SS-01 uses the name returned by the org-ID lookup.
+   */
+  staffJoinOrgName: string;
   /**
    * Stage requires mobile OTP; UAT currently does not.
    * Defaults: stage=true, uat=false (overridable in config JSON).
@@ -70,6 +80,10 @@ function normalize(name: EnvName, raw: RawEnvConfig): EnvConfig {
     password: raw.password ?? '',
     parentUsername: raw.parentUsername ?? '',
     parentPassword: raw.parentPassword ?? '',
+    staffApproverUsername: raw.staffApproverUsername ?? '',
+    staffApproverPassword: raw.staffApproverPassword ?? '',
+    staffJoinOrgId: raw.staffJoinOrgId ?? '',
+    staffJoinOrgName: raw.staffJoinOrgName ?? '',
     // UAT v2 matches Stage for OTP and organiser personal details.
     // Fee-policy dialog remains Stage-only unless enabled in JSON.
     requireMobileOtp: raw.requireMobileOtp ?? true,

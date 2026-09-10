@@ -115,7 +115,7 @@ export class PersonalDetailsPage {
    * Staging accepts `1` in every OTP box (same flow as parent signup).
    */
   async completeMobileVerification(mobileNumber?: string, otpDigit = '1') {
-    const phone = mobileNumber ?? faker.string.numeric(10);
+    const phone = mobileNumber ?? PersonalDetailsPage.buildMobileNumber();
 
     const phoneStepNav = this.page.getByRole('button', {
       name: 'Navigate to Phone verification',
@@ -139,18 +139,33 @@ export class PersonalDetailsPage {
   }
 
   /**
-   * Stage and UAT v2: full mobile OTP. Older UAT skipped OTP when requireMobileOtp was false.
+   * Fill mobile when present. Run OTP only if a Verify control appears — staff
+   * UAT v2 uses a combined Personal Details form (address + Next) with no OTP.
+   * Parent/organiser still complete OTP when the Verify button is shown.
    */
   async ensureMobileHandled(mobileNumber?: string, otpDigit = '1') {
-    if (getEnvConfig().requireMobileOtp) {
-      await this.completeMobileVerification(mobileNumber, otpDigit);
-      return;
+    const phone = mobileNumber ?? PersonalDetailsPage.buildMobileNumber();
+
+    const phoneStepNav = this.page.getByRole('button', {
+      name: 'Navigate to Phone verification',
+    });
+    if (await phoneStepNav.isVisible().catch(() => false)) {
+      await phoneStepNav.click();
     }
 
-    const phone = mobileNumber ?? faker.string.numeric(10);
     if (await this.mobileInput.isVisible().catch(() => false)) {
       await this.fillMobileIfProvided(phone);
     }
+
+    if (!getEnvConfig().requireMobileOtp) return;
+
+    const verifyShown = await this.verifyMobileButton
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!verifyShown) return;
+
+    await this.completeMobileVerification(phone, otpDigit);
   }
 
   async ensureOnPersonalDetailsPageForParent() {
@@ -176,6 +191,8 @@ export class PersonalDetailsPage {
   private async fillMobileIfProvided(mobileNumber: string) {
     if (!(await this.mobileInput.isEditable().catch(() => false))) return;
     await this.mobileInput.fill(mobileNumber);
+    await this.mobileInput.blur();
+    await expect(this.page.getByText(/Invalid phone number format/i)).toHaveCount(0);
   }
 
   /** Assign a fresh random data-testid and fill the field directly (no autosuggest). */
@@ -185,16 +202,34 @@ export class PersonalDetailsPage {
     await this.page.getByTestId(testId).fill(value);
   }
 
+  /** Text field, or a Select/combobox (staff UAT v2 Personal Details). */
+  private async fillTextOrSelect(field: Locator, value: string, prefix: string, selectName: RegExp) {
+    if (await field.isVisible().catch(() => false)) {
+      await this.fillWithRandomTestId(field, value, prefix);
+      return;
+    }
+
+    const combo = this.page.getByRole('combobox', { name: selectName }).or(
+      this.page.getByPlaceholder(selectName),
+    );
+    await expect(combo.first()).toBeVisible();
+    await combo.first().click();
+    const option = this.page.getByRole('option').filter({ hasNotText: /select/i }).first();
+    await expect(option).toBeVisible();
+    await option.click();
+  }
+
   async fillPersonalDetails(data: PersonalDetailsData) {
     await this.ensureOnPersonalDetailsPage();
 
     await this.fillWithRandomTestId(this.addressInput, data.address, 'address');
-    await this.fillWithRandomTestId(this.stateInput, data.state, 'state');
-    await this.fillWithRandomTestId(this.cityInput, data.city, 'city');
+    await this.fillTextOrSelect(this.stateInput, data.state, 'state', /state/i);
+    await this.fillTextOrSelect(this.cityInput, data.city, 'city', /city/i);
     await this.fillWithRandomTestId(this.zipCodeInput, data.zipCode, 'zip');
   }
 
   async clickNext() {
+    await expect(this.nextButton).toBeEnabled();
     await Promise.all([
       this.page.getByText('Step-1: Basic Information').waitFor({ state: 'visible' }),
       this.nextButton.click(),
@@ -208,7 +243,7 @@ export class PersonalDetailsPage {
   async submitPersonalDetails(data: PersonalDetailsData) {
     const personalData = {
       ...data,
-      mobileNumber: data.mobileNumber ?? faker.string.numeric(10),
+      mobileNumber: data.mobileNumber ?? PersonalDetailsPage.buildMobileNumber(),
     };
 
     await this.ensureOnPersonalDetailsPage();
@@ -233,6 +268,13 @@ export class PersonalDetailsPage {
     return faker.location.zipCode('#####');
   }
 
+  /** US NANP: area code and exchange cannot start with 0 or 1. */
+  static buildMobileNumber(): string {
+    const areaCode = faker.number.int({ min: 200, max: 999 });
+    const exchange = faker.number.int({ min: 200, max: 999 });
+    return `${areaCode}${exchange}${faker.string.numeric(4)}`;
+  }
+
   static buildPersonalDetailsData(overrides: Partial<PersonalDetailsData> = {}): PersonalDetailsData {
     return {
       address: PersonalDetailsPage.buildAddress(),
@@ -245,7 +287,7 @@ export class PersonalDetailsPage {
 
   static buildPersonalDetailsDataWithPhone(): PersonalDetailsData {
     return PersonalDetailsPage.buildPersonalDetailsData({
-      mobileNumber: faker.string.numeric(10),
+      mobileNumber: PersonalDetailsPage.buildMobileNumber(),
     });
   }
 }

@@ -9,6 +9,10 @@
   "password": "REPLACE_WITH_UAT_ORG_PASSWORD",
   "parentUsername": "REPLACE_WITH_UAT_PARENT_EMAIL",
   "parentPassword": "REPLACE_WITH_UAT_PARENT_PASSWORD",
+  "staffApproverUsername": "REPLACE_WITH_UAT_STAFF_APPROVER_EMAIL",
+  "staffApproverPassword": "REPLACE_WITH_UAT_STAFF_APPROVER_PASSWORD",
+  "staffJoinOrgId": "ORG-578",
+  "staffJoinOrgName": "Morrow Vasquez Traders",
   "requireMobileOtp": true,
   "organiserPersonalDetailsStep": true,
   "programFeePolicyDialog": false

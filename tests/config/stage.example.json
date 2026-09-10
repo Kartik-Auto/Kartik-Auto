@@ -9,6 +9,10 @@
   "password": "REPLACE_WITH_STAGE_ORG_PASSWORD",
   "parentUsername": "REPLACE_WITH_STAGE_PARENT_EMAIL",
   "parentPassword": "REPLACE_WITH_STAGE_PARENT_PASSWORD",
+  "staffApproverUsername": "REPLACE_WITH_STAGE_STAFF_APPROVER_EMAIL",
+  "staffApproverPassword": "REPLACE_WITH_STAGE_STAFF_APPROVER_PASSWORD",
+  "staffJoinOrgId": "",
+  "staffJoinOrgName": "",
   "requireMobileOtp": true,
   "organiserPersonalDetailsStep": true,
   "programFeePolicyDialog": true

@@ -77,11 +77,19 @@ jobs:
           STAGE_PASSWORD: ${{ secrets.STAGE_PASSWORD }}
           STAGE_PARENT_USERNAME: ${{ secrets.STAGE_PARENT_USERNAME }}
           STAGE_PARENT_PASSWORD: ${{ secrets.STAGE_PARENT_PASSWORD }}
+          STAGE_STAFF_APPROVER_USERNAME: ${{ secrets.STAGE_STAFF_APPROVER_USERNAME }}
+          STAGE_STAFF_APPROVER_PASSWORD: ${{ secrets.STAGE_STAFF_APPROVER_PASSWORD }}
+          STAGE_STAFF_JOIN_ORG_ID: ${{ secrets.STAGE_STAFF_JOIN_ORG_ID }}
+          STAGE_STAFF_JOIN_ORG_NAME: ${{ secrets.STAGE_STAFF_JOIN_ORG_NAME }}
           UAT_ORIGIN: ${{ secrets.UAT_ORIGIN }}
           UAT_USERNAME: ${{ secrets.UAT_USERNAME }}
           UAT_PASSWORD: ${{ secrets.UAT_PASSWORD }}
           UAT_PARENT_USERNAME: ${{ secrets.UAT_PARENT_USERNAME }}
           UAT_PARENT_PASSWORD: ${{ secrets.UAT_PARENT_PASSWORD }}
+          UAT_STAFF_APPROVER_USERNAME: ${{ secrets.UAT_STAFF_APPROVER_USERNAME }}
+          UAT_STAFF_APPROVER_PASSWORD: ${{ secrets.UAT_STAFF_APPROVER_PASSWORD }}
+          UAT_STAFF_JOIN_ORG_ID: ${{ secrets.UAT_STAFF_JOIN_ORG_ID }}
+          UAT_STAFF_JOIN_ORG_NAME: ${{ secrets.UAT_STAFF_JOIN_ORG_NAME }}
         run: node scripts/write-ci-config.mjs "${{ matrix.environment }}"
 
       - name: Run E2E tests (${{ matrix.environment }})
