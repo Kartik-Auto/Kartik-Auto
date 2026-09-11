@@ -24,9 +24,18 @@ export class StaffDetailsPage {
 
   async navigateToStaffDetailsViaSettings() {
     const link = this.page.getByRole('link', { name: 'Staff Details' });
-    if (!(await link.isVisible().catch(() => false))) {
+
+    // The Settings submenu is open by default; clicking it toggles, so only
+    // expand when the link is still missing after the sidebar has rendered.
+    const linkShown = await link
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!linkShown) {
       await this.page.getByRole('button', { name: 'Settings' }).click();
+      await link.waitFor({ state: 'visible' });
     }
+
     await link.click();
   }
 
@@ -136,12 +145,28 @@ export class StaffDetailsPage {
     });
   }
 
+  /** Tabs render after the table loads, so wait for the tab before selecting it. */
+  private async openTab(tab: Locator): Promise<void> {
+    await expect(tab).toBeVisible();
+    if ((await tab.getAttribute('aria-selected')) === 'true') return;
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+  }
+
+  private searchInput(): Locator {
+    return this.page.getByPlaceholder(/Search by SP ID, name or email/i);
+  }
+
+  /** Both tables paginate at 25 rows, so search instead of scanning the page. */
+  private async searchStaff(term: string): Promise<void> {
+    const input = this.searchInput();
+    await expect(input).toBeVisible();
+    await input.fill('');
+    await input.fill(term);
+  }
+
   async openStaffMembers(): Promise<void> {
-    const tab = this.staffMembersTab();
-    if (await tab.isVisible().catch(() => false)) {
-      await tab.click();
-      await expect(tab).toHaveAttribute('aria-selected', 'true');
-    }
+    await this.openTab(this.staffMembersTab());
   }
 
   async expectApprovedStaffInList(data: {
@@ -151,6 +176,7 @@ export class StaffDetailsPage {
     role?: StaffRole;
   }): Promise<void> {
     await this.openStaffMembers();
+    await this.searchStaff(data.email);
     await this.expectStaffInList({ ...data, role: data.role ?? 'Admin' });
   }
 
@@ -159,15 +185,12 @@ export class StaffDetailsPage {
   }
 
   async openStaffRequests(): Promise<void> {
-    const tab = this.staffRequestTab();
-    if (await tab.isVisible().catch(() => false)) {
-      await tab.click();
-      await expect(tab).toHaveAttribute('aria-selected', 'true');
-    }
+    await this.openTab(this.staffRequestTab());
   }
 
   async expectJoinRequest(data: { firstName: string; lastName: string; email: string }): Promise<void> {
     await this.openStaffRequests();
+    await this.searchStaff(data.email);
     const row = this.staffRequestRow(data.email);
     await expect(row, `Expected a staff request row for ${data.email}`).toBeVisible();
     await expect(row).toContainText(data.firstName);
