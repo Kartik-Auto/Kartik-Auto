@@ -63,11 +63,18 @@ export class DivisionPage {
     program.registrationFee = expectedFee;
     await expect(feeInput).toHaveValue(expectedFee);
 
+    // Registration can start and end on the same day, in which case both date
+    // triggers carry the same label — take the first match rather than a
+    // strict-mode violation.
     await expect(
-      dialog.getByRole('button', { name: ProgramPage.calendarButtonPattern(program.registrationStartDate) }),
+      dialog
+        .getByRole('button', { name: ProgramPage.calendarButtonPattern(program.registrationStartDate) })
+        .first(),
     ).toBeVisible();
     await expect(
-      dialog.getByRole('button', { name: ProgramPage.calendarButtonPattern(program.registrationEndDate) }),
+      dialog
+        .getByRole('button', { name: ProgramPage.calendarButtonPattern(program.registrationEndDate) })
+        .first(),
     ).toBeVisible();
   }
 
