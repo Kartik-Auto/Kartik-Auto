@@ -24,7 +24,11 @@ export class TeamPage {
     const panel = this.teamsPanel();
     this.createTeamButton = panel.getByRole('button', { name: 'Create New Team', exact: true });
     // Use getByRole('button') — locator('button') also matches <button role="combobox">.
-    this.addMenuButton = panel.getByRole('button', { name: 'Add', exact: true });
+    // While the panel loads it renders a disabled Add trigger, then swaps in the
+    // real empty-state buttons; ignore the placeholder so we never wait on it.
+    this.addMenuButton = panel
+      .getByRole('button', { name: 'Add', exact: true })
+      .and(panel.locator('button:not([disabled]):not([data-disabled])'));
     this.createTeamMenu = panel
       .locator('[role="combobox"]:not([disabled]):not([data-disabled])')
       .filter({ hasText: /Create New Team|^Add$|Select from My Teams/i });
@@ -135,9 +139,23 @@ export class TeamPage {
   }
 
   /**
+   * Entry in the opened Add menu. The Add control is a dropdown menu whose
+   * items are buttons; the older Create New Team control was a Select whose
+   * items are options. Match both so either rendering works.
+   */
+  private teamMenuItem(optionName: string): Locator {
+    const popup = this.page.getByRole('menu');
+    return popup
+      .getByRole('menuitem', { name: optionName, exact: true })
+      .or(popup.getByRole('button', { name: optionName, exact: true }))
+      .or(this.page.getByRole('option', { name: optionName, exact: true }))
+      .first();
+  }
+
+  /**
    * Open Add / Create New Team menu and choose an option.
-   * If the combobox already shows the same option, Radix will not re-fire —
-   * toggle via the other option first so Create New Team opens again.
+   * If the control is a Select already showing the same option, Radix will not
+   * re-fire — toggle via the other option first so the dialog opens again.
    */
   private async chooseTeamMenuOption(
     optionName: 'Create New Team' | 'Select from My Teams',
@@ -158,18 +176,22 @@ export class TeamPage {
 
     const currentLabel = ((await menu.innerText()) || '').replace(/\s+/g, ' ').trim();
     await menu.click();
-    await expect(this.page.getByRole('option').first()).toBeVisible();
+    await expect(this.teamMenuItem(optionName)).toBeVisible();
 
-    // Radix does not re-fire when the already-selected option is clicked again —
-    // toggle via the other option first so the target dialog opens.
-    const alreadySelected =
-      (optionName === 'Create New Team' && /Create New Team/i.test(currentLabel))
-      || (optionName === 'Select from My Teams' && /Select from My Teams/i.test(currentLabel));
+    // Dropdown menus always re-fire; only a Select keeps a selected value.
+    const isDropdownMenu = await this.page
+      .getByRole('menu')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const alreadySelected = !isDropdownMenu
+      && ((optionName === 'Create New Team' && /Create New Team/i.test(currentLabel))
+        || (optionName === 'Select from My Teams' && /Select from My Teams/i.test(currentLabel)));
 
     if (alreadySelected) {
       const otherOption =
         optionName === 'Create New Team' ? 'Select from My Teams' : 'Create New Team';
-      await this.page.getByRole('option', { name: otherOption, exact: true }).click();
+      await this.teamMenuItem(otherOption).click();
 
       if (otherOption === 'Select from My Teams') {
         if (await this.selectFromMyTeamsDialog().isVisible().catch(() => false)) {
@@ -183,10 +205,10 @@ export class TeamPage {
       await expect(menu).toBeVisible();
       await expect(menu).toBeEnabled();
       await menu.click();
-      await expect(this.page.getByRole('option').first()).toBeVisible();
+      await expect(this.teamMenuItem(optionName)).toBeVisible();
     }
 
-    await this.page.getByRole('option', { name: optionName, exact: true }).click();
+    await this.teamMenuItem(optionName).click();
   }
 
   async fillTeamName(teamName: string): Promise<void> {
@@ -250,14 +272,35 @@ export class TeamPage {
     await expect(this.teamRow(teamName)).toContainText(teamName);
   }
 
+  /**
+   * Controls that let a roster page add players. A team left with an unsaved
+   * roster draft shows none of them, so it cannot be used for invites.
+   */
+  private rosterEntryPoint(): Locator {
+    return this.page
+      .getByRole('heading', { name: /No players yet/i })
+      .or(this.page.getByRole('button', { name: 'Edit Roster', exact: true }))
+      .or(this.page.getByRole('button', { name: 'Invite New Player', exact: true }))
+      .first();
+  }
+
   /** Open a listed team to its roster page. */
   async openTeam(teamName: string): Promise<void> {
     await this.expectTeamInList(teamName);
     await this.teamRow(teamName).getByRole('cell').first().click();
     await expect(this.page).toHaveURL(/\/team\/\d+/);
-    await expect(this.page.getByRole('heading', { name: /No players yet/i }).or(
-      this.page.getByRole('button', { name: 'Edit Roster', exact: true }),
-    ).first()).toBeVisible();
+    await expect(this.rosterEntryPoint()).toBeVisible();
+  }
+
+  /** Open a team and report whether its roster page can take new players. */
+  private async tryOpenTeam(teamName: string): Promise<boolean> {
+    await this.expectTeamInList(teamName);
+    await this.teamRow(teamName).getByRole('cell').first().click();
+    await expect(this.page).toHaveURL(/\/team\/\d+/);
+    return await this.rosterEntryPoint()
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
   }
 
   /**
@@ -291,24 +334,29 @@ export class TeamPage {
   }
 
   /**
-   * Open the first team already on Team & Roster. Creates one only when the
-   * program has no teams yet.
+   * Open the first team on Team & Roster whose roster can take new players.
+   * Teams left with an unsaved roster draft are skipped; a fresh team is
+   * created when the program has none, or none are usable.
    */
   async openExistingTeam(): Promise<{ teamName: string; organizationName: string }> {
     await this.openTeamsAndRosterTab();
 
     const noTeamsYet = this.teamsPanel().getByRole('heading', { name: /No teams yet/i });
-    if (await noTeamsYet.isVisible().catch(() => false)) {
-      const team = await this.createTeam();
-      const organizationName = await this.getListedTeamOrganization(team.name);
-      await this.openTeam(team.name);
-      return { teamName: team.name, organizationName };
+    if (!(await noTeamsYet.isVisible().catch(() => false))) {
+      for (const teamName of await this.getListedTeamNames()) {
+        const organizationName = await this.getListedTeamOrganization(teamName);
+        if (await this.tryOpenTeam(teamName)) return { teamName, organizationName };
+
+        console.log(`[TeamPage] Skipping "${teamName}" — roster page offers no way to add players`);
+        await this.page.goBack();
+        await this.openTeamsAndRosterTab();
+      }
     }
 
-    const teamName = await this.getFirstListedTeamName();
-    const organizationName = await this.getListedTeamOrganization(teamName);
-    await this.openTeam(teamName);
-    return { teamName, organizationName };
+    const team = await this.createTeam();
+    const organizationName = await this.getListedTeamOrganization(team.name);
+    await this.openTeam(team.name);
+    return { teamName: team.name, organizationName };
   }
 
   async expectTeamNotInList(teamName: string): Promise<void> {

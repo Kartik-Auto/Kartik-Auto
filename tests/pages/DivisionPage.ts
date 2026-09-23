@@ -120,8 +120,14 @@ export class DivisionPage {
     const tab = this.page.getByRole('tab', { name: 'Payment Plans' });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
+    // UAT locks the registration fee at 0, so the tab reports the fee is unset
+    // instead of showing the usual empty payment-plan list.
     await expect(
-      this.page.getByRole('heading', { name: /No payment plans|Payment plans not available/i }).first(),
+      this.page
+        .getByRole('heading', {
+          name: /No payment plans|Payment plans not available|Registration Fee Not Set/i,
+        })
+        .first(),
     ).toBeVisible();
   }
 

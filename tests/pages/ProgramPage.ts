@@ -355,25 +355,29 @@ export class ProgramPage {
    * Open an existing program/division that exposes the Team & Roster tab.
    * Newer programs keep Team & Roster under Divisions → division detail.
    */
-  async openExistingProgramWithTeamsRoster(): Promise<string> {
-    const programName = await this.openExistingProgram();
+  async openExistingProgramWithTeamsRoster(maxCandidates = 8): Promise<string> {
+    await this.openProgramsList();
+    const candidates = (await this.listedProgramLinks()).slice(0, maxCandidates);
+    expect(candidates.length, 'Expected at least one program on the program list').toBeGreaterThan(0);
 
-    const programTeamsTab = this.page.getByRole('tab', { name: /Team & Roster/i });
-    if (await programTeamsTab.isVisible().catch(() => false)) {
-      return programName;
+    for (const [index, candidate] of candidates.entries()) {
+      if (index > 0) {
+        await this.openProgramsList();
+      }
+
+      await this.page.locator(`main a[href="${candidate.href}"]`).first().click();
+      await expect(this.page).toHaveURL(/\/programs\/\d+/);
+      await expect(this.page.getByRole('tab').first()).toBeVisible();
+
+      if (await this.tryRevealTeamsRosterTab()) return candidate.name;
+
+      // Drafts left without divisions expose neither Divisions nor Team & Roster.
+      console.log(`[ProgramPage] Skipping "${candidate.name}" — no Team & Roster tab`);
     }
 
-    const divisionsTab = this.page.getByRole('tab', { name: /Divisions/i });
-    await expect(divisionsTab).toBeVisible();
-    await divisionsTab.click();
-    await expect(divisionsTab).toHaveAttribute('aria-selected', 'true');
-
-    const divisionCards = this.divisionCards();
-    await expect(divisionCards.first()).toBeVisible();
-    await divisionCards.first().click();
-
-    await expect(this.page.getByRole('tab', { name: /Team & Roster/i })).toBeVisible();
-    return programName;
+    throw new Error(
+      `No program exposed a Team & Roster tab in the first ${candidates.length} programs`,
+    );
   }
 
   /** Division cards are role=button wrappers containing an h3 title. */
@@ -509,8 +513,14 @@ export class ProgramPage {
     const tab = this.page.getByRole('tab', { name: 'Payment Plans' });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
+    // UAT locks the registration fee at 0, so the tab reports the fee is unset
+    // instead of showing the usual empty payment-plan list.
     await expect(
-      this.page.getByRole('heading', { name: /No payment plans|Payment plans not available/i }).first(),
+      this.page
+        .getByRole('heading', {
+          name: /No payment plans|Payment plans not available|Registration Fee Not Set/i,
+        })
+        .first(),
     ).toBeVisible();
   }
 
